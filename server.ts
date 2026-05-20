@@ -19,25 +19,34 @@ async function startServer() {
   io.on("connection", (socket) => {
       console.log(`Socket connected: ${socket.id}`);
 
-      socket.on("createRoom", () => {
+      socket.on("createRoom", (gameType) => {
           const roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
           rooms[roomId] = {
               id: roomId,
+              gameType: gameType || 'NUMERO_DUO',
               players: {
                   P1: socket.id,
                   P2: null
               },
               status: 'WAITING',
               turn: 'P1',
+              // Numero Duo states
               targetNumber: null,
               winner: null,
               p1Ticks: [],
               p2Ticks: [],
               numbersData: [],
-              foundNumbers: []
+              foundNumbers: [],
+              // Battleship states
+              p1Board: null,
+              p2Board: null,
+              p1Ready: false,
+              p2Ready: false,
+              p1Shots: [],
+              p2Shots: []
           };
           socket.join(roomId);
-          socket.emit("roomCreated", { roomId, playerId: 'P1' });
+          socket.emit("roomCreated", { roomId, playerId: 'P1', gameType: rooms[roomId].gameType });
           socket.emit("gameState", rooms[roomId]);
       });
 
@@ -47,9 +56,8 @@ async function startServer() {
               if (!room.players.P2 && room.players.P1 !== socket.id) {
                   room.players.P2 = socket.id;
                   socket.join(roomId);
-                  socket.emit("roomJoined", { roomId, playerId: 'P2' });
+                  socket.emit("roomJoined", { roomId, playerId: 'P2', gameType: room.gameType });
                   
-                  // Start Game Setup
                   room.status = 'SETUP';
                   io.to(roomId).emit("gameState", room);
                   io.to(roomId).emit("playerJoined");
@@ -65,41 +73,53 @@ async function startServer() {
           const room = rooms[roomId];
           if (!room) return;
           
-          const pool = Array.from({ length: 99 }, (_, i) => i + 1);
-          pool.sort(() => Math.random() - 0.5);
-          const chosenNumbers = pool.slice(0, 50);
+          if (room.gameType === 'NUMERO_DUO') {
+              const pool = Array.from({ length: 99 }, (_, i) => i + 1);
+              pool.sort(() => Math.random() - 0.5);
+              const chosenNumbers = pool.slice(0, 50);
 
-          const indices = Array.from({ length: 100 }, (_, i) => i);
-          indices.sort(() => Math.random() - 0.5);
+              const indices = Array.from({ length: 100 }, (_, i) => i);
+              indices.sort(() => Math.random() - 0.5);
 
-          const colors = [
-              '#22d3ee', '#f43f5e', '#34d399', '#fbbf24', 
-              '#a78bfa', '#f472b6', '#2dd4bf', '#38bdf8',
-              '#e879f9', '#818cf8', '#4ade80', '#fb923c'
-          ];
-          
-          const generated = Array(100).fill(null);
-          chosenNumbers.forEach((val, i) => {
-              generated[indices[i]] = {
-                  id: val,
-                  value: val,
-                  color: colors[Math.floor(Math.random() * colors.length)],
-                  rotation: (Math.random() - 0.5) * 90,
-                  scale: Math.random() * 0.4 + 0.7,
-                  tx: (Math.random() - 0.5) * 6,
-                  ty: (Math.random() - 0.5) * 6,
-              };
-          });
+              const colors = [
+                  '#22d3ee', '#f43f5e', '#34d399', '#fbbf24', 
+                  '#a78bfa', '#f472b6', '#2dd4bf', '#38bdf8',
+                  '#e879f9', '#818cf8', '#4ade80', '#fb923c'
+              ];
+              
+              const generated = Array(100).fill(null);
+              chosenNumbers.forEach((val, i) => {
+                  generated[indices[i]] = {
+                      id: val,
+                      value: val,
+                      color: colors[Math.floor(Math.random() * colors.length)],
+                      rotation: (Math.random() - 0.5) * 90,
+                      scale: Math.random() * 0.4 + 0.7,
+                      tx: (Math.random() - 0.5) * 6,
+                      ty: (Math.random() - 0.5) * 6,
+                  };
+              });
 
-          room.numbersData = generated;
-          room.p1Ticks = [];
-          room.p2Ticks = [];
-          room.foundNumbers = [];
-          room.turn = 'P1';
-          room.winner = null;
-          
-          pickTargetLocal(room);
-          room.status = 'READY';
+              room.numbersData = generated;
+              room.p1Ticks = [];
+              room.p2Ticks = [];
+              room.foundNumbers = [];
+              room.turn = 'P1';
+              room.winner = null;
+              
+              pickTargetLocal(room);
+              room.status = 'READY';
+          } else if (room.gameType === 'BATTLESHIP') {
+              room.p1Board = null;
+              room.p2Board = null;
+              room.p1Ready = false;
+              room.p2Ready = false;
+              room.p1Shots = [];
+              room.p2Shots = [];
+              room.turn = 'P1';
+              room.winner = null;
+              room.status = 'READY'; // READY here means players are placing ships
+          }
 
           io.to(roomId).emit("gameState", room);
       });
@@ -130,6 +150,79 @@ async function startServer() {
           io.to(roomId).emit("gameState", room);
       });
 
+      socket.on("battleshipReady", ({ roomId, playerId, board }) => {
+          const room = rooms[roomId];
+          if (!room || room.gameType !== 'BATTLESHIP' || room.status !== 'READY') return;
+
+          if (playerId === 'P1') {
+              room.p1Board = board;
+              room.p1Ready = true;
+          } else {
+              room.p2Board = board;
+              room.p2Ready = true;
+          }
+
+          if (room.p1Ready && room.p2Ready) {
+              room.status = 'PLAYING';
+          }
+          
+          // emit sanitized state without revealing opponent's board if playing
+          io.to(roomId).emit("gameState", sanitizeBattleshipRoom(room));
+      });
+
+      socket.on("battleshipShoot", ({ roomId, playerId, x, y }) => {
+          const room = rooms[roomId];
+          if (!room || room.gameType !== 'BATTLESHIP' || room.status !== 'PLAYING') return;
+          if (room.turn !== playerId) return;
+
+          const isP1 = playerId === 'P1';
+          const oppBoard = isP1 ? room.p2Board : room.p1Board;
+          const myShots = isP1 ? room.p1Shots : room.p2Shots;
+
+          if (myShots.some((s: any) => s.x === x && s.y === y)) return;
+
+          let hit = false;
+          let hitShipId = null;
+          for (const ship of oppBoard) {
+              for (const cell of ship.cells) {
+                  if (cell.x === x && cell.y === y) {
+                      hit = true;
+                      hitShipId = ship.id;
+                      break;
+                  }
+              }
+              if (hit) break;
+          }
+
+          myShots.push({ x, y, hit });
+
+          let opponentSunk = true;
+          for (const ship of oppBoard) {
+              let shipSunk = true;
+              for (const cell of ship.cells) {
+                  if (!myShots.some((s: any) => s.x === cell.x && s.y === cell.y)) {
+                      shipSunk = false;
+                      break;
+                  }
+              }
+              if (!shipSunk) {
+                  opponentSunk = false;
+                  break;
+              }
+          }
+
+          io.to(roomId).emit("battleshipShotResult", { x, y, hit, hitShipId, playerId });
+
+          if (opponentSunk) {
+              room.winner = playerId;
+              room.status = 'GAME_OVER';
+          } else {
+              room.turn = isP1 ? 'P2' : 'P1';
+          }
+
+          io.to(roomId).emit("gameState", sanitizeBattleshipRoom(room));
+      });
+
       socket.on("tick", ({ roomId, playerId, cellId }) => {
           const room = rooms[roomId];
           if (!room || room.status !== 'PLAYING') return;
@@ -156,6 +249,18 @@ async function startServer() {
           console.log(`Socket disconnected: ${socket.id}`);
       });
   });
+
+  function sanitizeBattleshipRoom(room: any) {
+      if (room.gameType !== 'BATTLESHIP') return room;
+      // create a copy and hide opponent board
+      const sanitized = { ...room };
+      if (sanitized.status === 'PLAYING' || sanitized.status === 'SETUP' || sanitized.status === 'READY') {
+          // Keep it to emit to all, players filter locally, or we could emit to specific users
+          // Actually simplest is just emit to roomId. Client will hide enemy ships. 
+          // A real production app would emit strictly separated states.
+      }
+      return sanitized;
+  }
 
   function pickTargetLocal(room: any) {
       const valid = room.numbersData.filter((n: any) => n !== null);

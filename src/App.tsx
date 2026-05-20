@@ -1,16 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import NumberBoard from './components/NumberBoard';
 import PlayerPanel from './components/PlayerPanel';
+import BattleshipGame from './components/Battleship';
 import { playAudio } from './lib/audio';
 import { io, Socket } from 'socket.io-client';
 
 let socket: Socket;
 
 export default function App() {
+  const [selectedApp, setSelectedApp] = useState<'NUMERO_DUO' | 'BATTLESHIP' | null>(null);
+
   const [inLobby, setInLobby] = useState(true);
   const [roomId, setRoomId] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [myPlayerId, setMyPlayerId] = useState<'P1' | 'P2' | null>(null);
+  const [gameType, setGameType] = useState<'NUMERO_DUO' | 'BATTLESHIP' | null>(null);
 
   const [status, setStatus] = useState<'SETUP' | 'READY' | 'PLAYING' | 'WAITING' | 'GAME_OVER'>('SETUP');
   const [turn, setTurn] = useState<'P1' | 'P2'>('P1');
@@ -21,6 +25,14 @@ export default function App() {
   const [numbersData, setNumbersData] = useState<any[]>([]);
   const [foundNumbers, setFoundNumbers] = useState<Set<number>>(new Set());
 
+  // Battleship states
+  const [p1Board, setP1Board] = useState<any>(null);
+  const [p2Board, setP2Board] = useState<any>(null);
+  const [p1Ready, setP1Ready] = useState(false);
+  const [p2Ready, setP2Ready] = useState(false);
+  const [p1Shots, setP1Shots] = useState<any[]>([]);
+  const [p2Shots, setP2Shots] = useState<any[]>([]);
+
   useEffect(() => {
      socket = io(window.location.origin);
      socket.on('connect', () => console.log('Connected to server'));
@@ -28,6 +40,7 @@ export default function App() {
      socket.on('roomCreated', (data) => {
          setRoomId(data.roomId);
          setMyPlayerId(data.playerId);
+         setGameType(data.gameType);
          setInLobby(false);
          setStatus('WAITING');
      });
@@ -35,6 +48,7 @@ export default function App() {
      socket.on('roomJoined', (data) => {
          setRoomId(data.roomId);
          setMyPlayerId(data.playerId);
+         setGameType(data.gameType);
          setInLobby(false);
      });
 
@@ -43,10 +57,17 @@ export default function App() {
          setTurn(state.turn);
          setTargetNumber(state.targetNumber);
          setWinner(state.winner);
-         setP1Ticks(new Set(state.p1Ticks));
-         setP2Ticks(new Set(state.p2Ticks));
-         setNumbersData(state.numbersData);
-         setFoundNumbers(new Set(state.foundNumbers));
+         setP1Ticks(new Set(state.p1Ticks || []));
+         setP2Ticks(new Set(state.p2Ticks || []));
+         setNumbersData(state.numbersData || []);
+         setFoundNumbers(new Set(state.foundNumbers || []));
+         
+         setP1Board(state.p1Board);
+         setP2Board(state.p2Board);
+         setP1Ready(state.p1Ready);
+         setP2Ready(state.p2Ready);
+         setP1Shots(state.p1Shots || []);
+         setP2Shots(state.p2Shots || []);
      });
 
      socket.on('correctClick', () => playAudio('correct'));
@@ -100,36 +121,88 @@ export default function App() {
   };
 
   if (inLobby) {
+      if (!selectedApp) {
+          return (
+              <div className="flex flex-col h-[100dvh] w-screen items-center justify-center bg-slate-50 text-slate-900 font-sans p-4 relative py-10 overflow-auto">
+                  <h1 className="text-4xl sm:text-5xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-indigo-500 via-purple-400 to-pink-500 mb-12 text-center leading-tight">
+                     ARCADE<span className="text-indigo-500">.</span>HUB
+                  </h1>
+                  
+                  <div className="flex flex-col sm:flex-row gap-6 w-full max-w-2xl px-4">
+                      {/* Game 1 */}
+                      <div 
+                          onClick={() => setSelectedApp('NUMERO_DUO')}
+                          className="flex-1 flex flex-col items-center bg-white p-8 rounded-[2rem] shadow-xl border border-slate-200 cursor-pointer hover:scale-105 hover:shadow-2xl hover:border-sky-200 transition-all group"
+                      >
+                          <div className="w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-sky-400 to-sky-600 shadow-lg shadow-sky-500/30 flex items-center justify-center group-hover:-translate-y-2 transition-transform duration-300">
+                             <span className="text-5xl font-black text-white mix-blend-overlay">99</span>
+                          </div>
+                          <h2 className="text-2xl font-black tracking-tight text-slate-800 mb-2">Numero Duo</h2>
+                          <p className="text-center text-sm font-semibold text-slate-500">Fast-paced competitive number finding action</p>
+                      </div>
+
+                      {/* Game 2 */}
+                      <div 
+                          onClick={() => setSelectedApp('BATTLESHIP')}
+                          className="flex-1 flex flex-col items-center bg-white p-8 rounded-[2rem] shadow-xl border border-slate-200 cursor-pointer hover:scale-105 hover:shadow-2xl hover:border-pink-200 transition-all group"
+                      >
+                          <div className="w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-pink-400 to-red-500 shadow-lg shadow-pink-500/30 flex items-center justify-center group-hover:-translate-y-2 transition-transform duration-300">
+                             <svg className="w-12 h-12 text-white mix-blend-overlay" fill="currentColor" viewBox="0 0 24 24"><path d="M22 20.5a1.5 1.5 0 0 1-1.5 1.5h-17A1.5 1.5 0 0 1 2 20.5V19h20v1.5zm-5.5-12a1.5 1.5 0 0 0-1.5-1.5h-1a1.5 1.5 0 0 0-1.5 1.5v3h-2v-3a1.5 1.5 0 0 0-1.5-1.5h-1a1.5 1.5 0 0 0-1.5 1.5v3h-2v1.5a1.5 1.5 0 0 0 1.5 1.5h15a1.5 1.5 0 0 0 1.5-1.5V11.5h-2v-3zm-6-2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5V7H10.5V6zM8 3.5A1.5 1.5 0 0 1 9.5 2h5A1.5 1.5 0 0 1 16 3.5V5H8V3.5z"/></svg>
+                          </div>
+                          <h2 className="text-2xl font-black tracking-tight text-slate-800 mb-2">Sea Strike</h2>
+                          <p className="text-center text-sm font-semibold text-slate-500">Strategic naval combat and fleet deployment</p>
+                      </div>
+                  </div>
+              </div>
+          );
+      }
+
       return (
-          <div className="flex flex-col h-[100dvh] w-screen items-center justify-center bg-orange-50 text-slate-900 font-sans p-4">
-              <img src="/favicon.svg" alt="Numero Duo Icon" className="w-32 h-32 md:w-40 md:h-40 mb-6 drop-shadow-xl animate-bounce" style={{ animationDuration: '3s' }} />
-              <h1 className="text-[min(12vw,6rem)] font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-sky-500 via-orange-400 to-pink-500 mb-10 text-center w-full leading-tight">
-                 NUMERO<span className="text-sky-500">.</span>DUO
+          <div className={`flex flex-col h-[100dvh] w-screen items-center justify-center ${selectedApp === 'NUMERO_DUO' ? 'bg-orange-50' : 'bg-slate-900'} text-slate-900 font-sans p-4 relative py-10 transition-colors duration-500`}>
+              <button 
+                  onClick={() => setSelectedApp(null)} 
+                  className={`absolute top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-colors ${selectedApp === 'NUMERO_DUO' ? 'bg-white text-slate-600 hover:bg-slate-100 shadow' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+              >
+                  &larr; Back
+              </button>
+
+              <div className={`w-24 h-24 mb-6 rounded-3xl shadow-xl flex items-center justify-center animate-bounce ${selectedApp === 'NUMERO_DUO' ? 'bg-gradient-to-br from-sky-400 to-sky-600 shadow-sky-500/30' : 'bg-gradient-to-br from-pink-400 to-red-500 shadow-pink-500/30'}`} style={{ animationDuration: '3s' }}>
+                  {selectedApp === 'NUMERO_DUO' ? (
+                      <span className="text-5xl font-black text-white mix-blend-overlay">99</span>
+                  ) : (
+                      <svg className="w-12 h-12 text-white mix-blend-overlay" fill="currentColor" viewBox="0 0 24 24"><path d="M22 20.5a1.5 1.5 0 0 1-1.5 1.5h-17A1.5 1.5 0 0 1 2 20.5V19h20v1.5zm-5.5-12a1.5 1.5 0 0 0-1.5-1.5h-1a1.5 1.5 0 0 0-1.5 1.5v3h-2v-3a1.5 1.5 0 0 0-1.5-1.5h-1a1.5 1.5 0 0 0-1.5 1.5v3h-2v1.5a1.5 1.5 0 0 0 1.5 1.5h15a1.5 1.5 0 0 0 1.5-1.5V11.5h-2v-3zm-6-2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5V7H10.5V6zM8 3.5A1.5 1.5 0 0 1 9.5 2h5A1.5 1.5 0 0 1 16 3.5V5H8V3.5z"/></svg>
+                  )}
+              </div>
+              
+              <h1 className={`text-4xl sm:text-5xl font-black italic tracking-tighter text-transparent bg-clip-text mb-8 text-center leading-tight ${selectedApp === 'NUMERO_DUO' ? 'bg-gradient-to-br from-sky-500 via-orange-400 to-pink-500' : 'bg-gradient-to-br from-pink-400 to-red-500'}`}>
+                 {selectedApp === 'NUMERO_DUO' ? 'NUMERO.DUO' : 'SEA.STRIKE'}
               </h1>
-              <div className="flex flex-col w-full max-w-sm gap-4 bg-white p-6 rounded-3xl shadow-xl border border-orange-200">
+              
+              <div className={`flex flex-col w-full max-w-sm gap-6 p-6 rounded-3xl shadow-xl border ${selectedApp === 'NUMERO_DUO' ? 'bg-white border-orange-200' : 'bg-slate-800 border-slate-700'}`}>
+                  
                   <button 
-                      onPointerDown={() => socket.emit('createRoom')}
-                      className="w-full py-4 bg-sky-500 text-white rounded-xl font-bold uppercase tracking-widest shadow-md active:scale-95 transition-all text-sm hover:bg-sky-600"
+                      onPointerDown={() => socket.emit('createRoom', selectedApp)}
+                      className={`w-full py-4 text-white rounded-xl font-bold uppercase tracking-widest shadow-md active:scale-95 transition-all text-sm ${selectedApp === 'NUMERO_DUO' ? 'bg-sky-500 hover:bg-sky-600' : 'bg-pink-500 hover:bg-pink-600'}`}
                   >
                       Create Game
                   </button>
-                  <div className="w-full h-px bg-slate-200 my-2 relative">
-                      <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-xs font-bold text-slate-400 uppercase">OR</span>
+                  <div className={`w-full h-px relative ${selectedApp === 'NUMERO_DUO' ? 'bg-slate-200' : 'bg-slate-700'}`}>
+                      <span className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 px-2 text-xs font-bold uppercase ${selectedApp === 'NUMERO_DUO' ? 'bg-white text-slate-400' : 'bg-slate-800 text-slate-500'}`}>OR</span>
                   </div>
                   <div className="flex gap-2">
                       <input 
                           type="text" 
                           value={joinCode}
                           onChange={e => setJoinCode(e.target.value.toUpperCase())}
-                          placeholder="Enter Room Code"
-                          className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 tracking-widest text-center uppercase focus:outline-none focus:border-pink-400 Focus:ring-2 focus:ring-pink-400/20"
+                          placeholder="Room Code"
+                          className={`flex-1 px-4 py-3 border rounded-xl font-bold tracking-widest text-center uppercase focus:outline-none focus:ring-2 w-0 ${selectedApp === 'NUMERO_DUO' ? 'bg-slate-50 border-slate-200 text-slate-700 focus:border-pink-400 focus:ring-pink-400/20' : 'bg-slate-900 border-slate-700 text-white focus:border-sky-400 focus:ring-sky-400/20 placeholder:text-slate-600'}`}
                           maxLength={4}
                       />
                       <button 
                           onPointerDown={() => {
                               if (joinCode.length === 4) socket.emit('joinRoom', joinCode);
                           }}
-                          className="px-6 bg-pink-500 text-white rounded-xl font-bold uppercase tracking-widest shadow-md active:scale-95 transition-all text-sm hover:bg-pink-600 disabled:opacity-50 disabled:active:scale-100"
+                          className={`px-6 text-white rounded-xl font-bold uppercase tracking-widest shadow-md active:scale-95 transition-all text-sm disabled:opacity-50 disabled:active:scale-100 ${selectedApp === 'NUMERO_DUO' ? 'bg-pink-500 hover:bg-pink-600' : 'bg-sky-500 hover:bg-sky-600'}`}
                           disabled={joinCode.length !== 4}
                       >
                           Join
@@ -137,6 +210,25 @@ export default function App() {
                   </div>
               </div>
           </div>
+      );
+  }
+
+  if (gameType === 'BATTLESHIP') {
+      return (
+          <BattleshipGame 
+              socket={socket} 
+              roomId={roomId} 
+              myPlayerId={myPlayerId} 
+              status={status}
+              turn={turn}
+              winner={winner}
+              p1Board={p1Board}
+              p2Board={p2Board}
+              p1Ready={p1Ready}
+              p2Ready={p2Ready}
+              p1Shots={p1Shots}
+              p2Shots={p2Shots}
+          />
       );
   }
 
