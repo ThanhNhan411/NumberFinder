@@ -134,6 +134,7 @@ export default function App() {
       {/* SETUP / WIN Overlay */}
       {(status === 'SETUP' || status === 'GAME_OVER') && (
          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-orange-50/95 backdrop-blur-xl transition-all">
+            <img src="/favicon.svg" alt="Numero Duo Icon" className="w-32 h-32 md:w-40 md:h-40 mb-6 drop-shadow-xl animate-bounce" style={{ animationDuration: '3s' }} />
             <h1 className="text-[min(12vw,6rem)] font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-sky-500 via-orange-400 to-pink-500 mb-10 text-center w-full leading-tight">
                NUMERO<span className="text-sky-500">.</span>DUO
             </h1>
