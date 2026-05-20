@@ -42,7 +42,6 @@ export default function App() {
          setMyPlayerId(data.playerId);
          setGameType(data.gameType);
          setInLobby(false);
-         setStatus('WAITING');
      });
 
      socket.on('roomJoined', (data) => {

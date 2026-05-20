@@ -28,7 +28,7 @@ async function startServer() {
                   P1: socket.id,
                   P2: null
               },
-              status: 'WAITING',
+              status: gameType === 'BATTLESHIP' ? 'READY' : 'WAITING',
               turn: 'P1',
               // Numero Duo states
               targetNumber: null,
@@ -58,8 +58,15 @@ async function startServer() {
                   socket.join(roomId);
                   socket.emit("roomJoined", { roomId, playerId: 'P2', gameType: room.gameType });
                   
-                  room.status = 'SETUP';
-                  io.to(roomId).emit("gameState", room);
+                  if (room.gameType === 'NUMERO_DUO') {
+                      room.status = 'SETUP';
+                  }
+                  
+                  if (room.gameType === 'BATTLESHIP' && room.p1Ready && room.p2Ready) {
+                      room.status = 'PLAYING';
+                  }
+
+                  io.to(roomId).emit("gameState", sanitizeBattleshipRoom(room));
                   io.to(roomId).emit("playerJoined");
               } else {
                   socket.emit("error", "Room is full or you are already in it.");
