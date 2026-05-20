@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 
-export default function NumberBoard({ status, numbers, foundNumbers, onNumberClick, turn, targetNumber }: any) {
+export default function NumberBoard({ status, numbers, foundNumbers, onNumberClick, turn, targetNumber, myPlayerId }: any) {
     const [wrongIds, setWrongIds] = useState<Set<number>>(new Set());
 
     const handleNumberDown = (val: number) => {
-        if (status === 'PLAYING' && val !== targetNumber) {
+        if (status === 'PLAYING' && val !== targetNumber && myPlayerId === turn) {
             setWrongIds(prev => new Set(prev).add(val));
             setTimeout(() => {
                 setWrongIds(prev => {
@@ -39,8 +39,7 @@ export default function NumberBoard({ status, numbers, foundNumbers, onNumberCli
                     }
                     const isFound = foundNumbers.has(item.value);
                     const isWrong = wrongIds.has(item.value);
-                    const turnRotation = turn === 'P2' ? 180 : 0;
-                    const finalRotation = item.rotation + turnRotation;
+                    const finalRotation = item.rotation;
 
                     return (
                         <div key={item.id} className="relative flex items-center justify-center">
