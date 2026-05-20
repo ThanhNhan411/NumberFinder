@@ -1,0 +1,6 @@
+{
+  "name": "Tìm Số Đại Chiến",
+  "description": "Trò chơi đối kháng 2 người trên cùng một màn hình. Một người tìm số, một người rút máu đối phương thật nhanh - ai sẽ thắng?",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
