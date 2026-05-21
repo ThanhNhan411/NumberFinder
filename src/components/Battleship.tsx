@@ -1286,7 +1286,6 @@ function Grid({
                             touchAction: 'none',
                             opacity: isHovered ? 0.15 : isSunk ? 0.65 : 0.95, // Dim original ship to a shadow position during drag to maintain DOM stability, make sunk ships semi-transparent
                             zIndex: 20,
-                            overflow: 'hidden',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center'
@@ -1298,8 +1297,8 @@ function Grid({
                             objectFit: 'fill',
                             filter: isSunk ? 'grayscale(100%) brightness(60%) contrast(110%)' : 'none'
                         } : {
-                            width: `${ship.size * 100}%`,
-                            height: `${100 / ship.size}%`,
+                            width: `${100 / ship.size}%`,
+                            height: `${ship.size * 100}%`,
                             transform: 'rotate(90deg) translateY(-100%)',
                             transformOrigin: '0 0',
                             objectFit: 'fill',
@@ -1348,7 +1347,6 @@ function Grid({
                                 opacity: 0.8,
                                 pointerEvents: 'none',
                                 zIndex: 40,
-                                overflow: 'hidden',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center'
@@ -1359,8 +1357,8 @@ function Grid({
                                 height: '100%',
                                 objectFit: 'fill'
                             } : {
-                                width: `${ship.size * 100}%`,
-                                height: `${100 / ship.size}%`,
+                                width: `${100 / ship.size}%`,
+                                height: `${ship.size * 100}%`,
                                 transform: 'rotate(90deg) translateY(-100%)',
                                 transformOrigin: '0 0',
                                 objectFit: 'fill'
