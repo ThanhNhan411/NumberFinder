@@ -24,15 +24,6 @@ const SHIP_IMAGES: Record<string, string> = {
     'S5': '/ships/destroyer.png'
 };
 
-const adjustColorBrightness = (hex: string, percent: number) => {
-    let num = parseInt(hex.replace("#", ""), 16),
-        amt = Math.round(2.55 * percent),
-        R = (num >> 16) + amt,
-        G = (num >> 8 & 0x00FF) + amt,
-        B = (num & 0x0000FF) + amt;
-    return "#" + (0x1000000 + (R < 255 ? R < 0 ? 0 : R : 255) * 0x10000 + (G < 255 ? G < 0 ? 0 : G : 255) * 0x100 + (B < 255 ? B < 0 ? 0 : B : 255)).toString(16).slice(1);
-};
-
 export default function BattleshipGame({ 
     socket, roomId, myPlayerId, status, turn, winner, 
     p1Board, p2Board, p1Ready, p2Ready, p1Shots, p2Shots,
@@ -65,7 +56,6 @@ export default function BattleshipGame({
     // Audio and haptic effects...
     const playEffect = (type: 'hit' | 'miss' | 'turn') => {
         try {
-            // Haptic vibration feedback
             if (navigator.vibrate) {
                 if (type === 'hit') {
                     navigator.vibrate([100, 50, 100]);
@@ -245,7 +235,6 @@ export default function BattleshipGame({
 
     const handleGridTap = (x: number, y: number) => {
         if (status === 'READY') {
-            // Placement logic
             if (selectedShipInfo) {
                 const { id, size, isVertical, color } = selectedShipInfo;
                 if (isVertical && y + size > 10) return;
@@ -256,7 +245,6 @@ export default function BattleshipGame({
                     cells.push({ x: isVertical ? x : x + i, y: isVertical ? y + i : y });
                 }
 
-                // Check collision
                 const hasCollision = placedShips.some(ship => 
                     ship.cells.some((c: any) => cells.some(cc => cc.x === c.x && cc.y === c.y))
                 );
@@ -268,7 +256,6 @@ export default function BattleshipGame({
                 setSelectedShipInfo(null);
                 setSelectedPlacedShipId(null);
             } else if (selectedPlacedShipId) {
-                // Move existing selected ship to new empty coordinate
                 const ship = placedShips.find(s => s.id === selectedPlacedShipId);
                 if (ship) {
                     const { id, size, isVertical, color } = ship;
@@ -280,7 +267,6 @@ export default function BattleshipGame({
                         cells.push({ x: isVertical ? x : x + i, y: isVertical ? y + i : y });
                     }
 
-                    // Check collision excluding itself
                     const hasCollision = placedShips.some(p => 
                         p.id !== id && p.cells.some((c: any) => cells.some(cc => cc.x === c.x && cc.y === c.y))
                     );
@@ -293,11 +279,9 @@ export default function BattleshipGame({
                 }
             }
         } else if (status === 'PLAYING') {
-            // Shooting logic
             if (turn !== myPlayerId) return;
-            if (myShots.some((s: any) => s.x === x && s.y === y)) return; // already shot
+            if (myShots.some((s: any) => s.x === x && s.y === y)) return;
             
-            // Double-tap or tap-again on the locked target to fire immediately
             if (selectedTarget && selectedTarget.x === x && selectedTarget.y === y) {
                 handleFire();
             } else {
@@ -346,9 +330,7 @@ export default function BattleshipGame({
         setHoverCell(prev => prev?.x === x && prev?.y === y ? prev : { x, y });
     };
 
-    const handleDragLeaveGrid = () => {
-        // Do nothing to prevent flickering when moving between cells
-    };
+    const handleDragLeaveGrid = () => {};
 
     const handleDragEnd = () => {
         setDragInfo(null);
@@ -385,7 +367,6 @@ export default function BattleshipGame({
         setDragInfo(null);
         setHoverCell(null);
     };
-    // HTML5 Drag and Drop End
 
     // Custom Mobile Touch Drag and Drop Handlers
     const handleTouchStartShip = (e: React.TouchEvent, ship: any, source: 'dock' | 'board') => {
@@ -430,7 +411,6 @@ export default function BattleshipGame({
         const dy = touch.clientY - touchStartRef.current.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         
-        // Threshold of 6 pixels to consider it a drag rather than a tap
         if (dist > 6) {
             hasMovedRef.current = true;
         }
@@ -457,8 +437,6 @@ export default function BattleshipGame({
                 const clampedX = Math.max(0, Math.min(x, 9));
                 const clampedY = Math.max(0, Math.min(y, 9));
                 
-                // PERFORMANCE OPTIMIZATION: Only update hoverCell if coordinate actually changed.
-                // This avoids 60-120 re-renders per second, making drag extremely smooth.
                 setHoverCell(prev => {
                     if (prev && prev.x === clampedX && prev.y === clampedY) {
                         return prev;
@@ -475,7 +453,6 @@ export default function BattleshipGame({
         if (!dragInfo) return;
         
         if (!hasMovedRef.current) {
-            // Cancel dragging/hovering since it was just a tap
             setDragInfo(null);
             setHoverCell(null);
             touchStartRef.current = null;
@@ -546,7 +523,6 @@ export default function BattleshipGame({
         if (status !== 'READY') return;
         
         if (selectedPlacedShipId === ship.id) {
-            // If already selected, tap rotates it!
             handleRotateSelected();
         } else {
             setSelectedPlacedShipId(ship.id);
@@ -598,7 +574,7 @@ export default function BattleshipGame({
         setShipsToPlace([...shipsToPlace, { id: last.id, size: last.size, color: last.color }]);
         setSelectedPlacedShipId(null);
         setSelectedShipInfo(null);
-    }
+    };
 
     const placeRandomShips = () => {
         let currentPlaced: any[] = [];
@@ -638,9 +614,8 @@ export default function BattleshipGame({
         if (placedShips.length === 5) {
             socket.emit("battleshipReady", { roomId, playerId: myPlayerId, board: placedShips });
         }
-    }
+    };
 
-    // Helper to calculate opponent fleet status
     const getOpponentFleetStatus = () => {
         if (!oppBoardState) {
             return SHIP_TYPES.map(ship => ({ 
@@ -669,7 +644,6 @@ export default function BattleshipGame({
         });
     };
 
-    // Helper to calculate own fleet status
     const getMyFleetStatus = () => {
         const board = myBoardState || placedShips;
         if (!board) {
@@ -729,7 +703,7 @@ export default function BattleshipGame({
                     &larr; Exit
                 </button>
                 <h1 className="text-2xl sm:text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-pink-650">SEA STRIKE</h1>
-                <div className="w-[68px] sm:w-[74px]" /> {/* Spacer to balance the back button */}
+                <div className="w-[68px] sm:w-[74px]" />
             </div>
 
             <div className="flex flex-col items-center justify-center p-4 pt-1 h-full relative max-w-lg md:max-w-4xl mx-auto w-full overflow-hidden">
@@ -850,23 +824,17 @@ export default function BattleshipGame({
                                                     style={shipStyle}
                                                     className={`transition-all flex-shrink-0 cursor-grab active:cursor-grabbing ${selectedShipInfo?.id === ship.id ? 'scale-105' : 'opacity-80 hover:opacity-100'} ${dragInfo?.ship?.id === ship.id ? 'opacity-30' : ''}`}
                                                 >
-                                                    <div className="w-full h-full relative pointer-events-none">
-                                                        <img 
-                                                            src={SHIP_IMAGES[ship.id]} 
-                                                            alt="" 
-                                                            style={{
-                                                                position: 'absolute',
-                                                                top: 0,
-                                                                left: 0,
-                                                                width: `${100 / ship.size}%`,
-                                                                height: `${ship.size * 100}%`,
-                                                                transform: 'rotate(90deg) translateY(-100%)',
-                                                                transformOrigin: '0 0',
-                                                                objectFit: 'contain'
-                                                            }}
-                                                            className="pointer-events-none select-none"
-                                                        />
-                                                    </div>
+                                                    <img 
+                                                        src={SHIP_IMAGES[ship.id]} 
+                                                        alt="" 
+                                                        className="w-full h-full object-cover pointer-events-none select-none"
+                                                        style={{
+                                                            transform: 'rotate(-90deg)',
+                                                            transformOrigin: 'center',
+                                                            width: '100%',
+                                                            height: '100%'
+                                                        }}
+                                                    />
                                                 </div>
                                             );
                                         })}
@@ -980,7 +948,7 @@ export default function BattleshipGame({
                         {/* Dual Board Layout Container */}
                         <div className="flex flex-col md:flex-row w-full gap-4 md:gap-8 justify-center items-center md:items-stretch px-2 pb-4">
                             
-                            {/* Opponent's Board (Left Column) */}
+                            {/* Opponent's Board */}
                             <div className={`flex-1 flex flex-col w-full max-w-sm ${activeTab === 'attack' ? 'block' : 'hidden md:flex'}`}>
                                 <div className="flex justify-between items-center mb-1.5 px-1 h-[22px]">
                                     <span className={`text-xs font-bold uppercase tracking-widest ${turn === myPlayerId ? 'text-sky-600 animate-pulse' : 'text-slate-500'}`}>
@@ -1004,7 +972,7 @@ export default function BattleshipGame({
                                     />
                                 </div>
                                 
-                                {/* Opponent Fleet Radar (Status Bars) */}
+                                {/* Opponent Fleet Radar */}
                                 <div className="flex justify-center items-center gap-1 mt-2.5 px-1.5 py-1.5 bg-white/70 border border-orange-200 rounded-lg w-full flex-shrink-0 shadow-sm">
                                     {opponentFleet.map((ship) => (
                                         <div 
@@ -1025,11 +993,7 @@ export default function BattleshipGame({
                                                         <div 
                                                             key={idx} 
                                                             className={`w-1 h-1 rounded-full ${
-                                                                ship.isSunk 
-                                                                    ? 'bg-red-500' 
-                                                                    : isHit 
-                                                                        ? 'bg-amber-550' 
-                                                                        : 'bg-slate-300'
+                                                                ship.isSunk ? 'bg-red-500' : isHit ? 'bg-amber-550' : 'bg-slate-300'
                                                             }`} 
                                                         />
                                                     );
@@ -1039,7 +1003,6 @@ export default function BattleshipGame({
                                     ))}
                                 </div>
 
-                                {/* Tap hint - fixed height to prevent layout shift */}
                                 <div className="mt-2 px-1 w-full flex-shrink-0 h-[20px] flex items-center justify-center">
                                     {turn === myPlayerId && (
                                         <p className={`text-center text-[10px] font-bold uppercase tracking-widest transition-colors duration-150 ${selectedTarget ? 'text-sky-600' : 'text-slate-400'}`}>
@@ -1058,7 +1021,7 @@ export default function BattleshipGame({
                                 </div>
                             </div>
 
-                            {/* My Board (Right Column) */}
+                            {/* My Board */}
                             <div className={`flex-1 flex flex-col w-full max-w-sm ${activeTab === 'defense' ? 'block' : 'hidden md:flex'}`}>
                                 <div className="flex justify-between items-center mb-1.5 px-1">
                                     <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
@@ -1081,9 +1044,7 @@ export default function BattleshipGame({
                                         <div 
                                             key={ship.id} 
                                             className={`flex flex-col items-center p-0.5 rounded text-center transition-all flex-1 ${
-                                                ship.isSunk 
-                                                    ? 'text-red-500/50 opacity-40' 
-                                                    : 'text-slate-500'
+                                                ship.isSunk ? 'text-red-500/50 opacity-40' : 'text-slate-500'
                                             }`}
                                         >
                                             <span className="text-[7.5px] font-mono uppercase tracking-wider mb-0.5">{ship.name}</span>
@@ -1094,11 +1055,7 @@ export default function BattleshipGame({
                                                         <div 
                                                             key={idx} 
                                                             className={`w-0.5 h-0.5 rounded-full ${
-                                                                ship.isSunk 
-                                                                    ? 'bg-red-500' 
-                                                                    : isHit 
-                                                                        ? 'bg-red-550' 
-                                                                        : 'bg-slate-300'
+                                                                ship.isSunk ? 'bg-red-500' : isHit ? 'bg-red-550' : 'bg-slate-300'
                                                             }`} 
                                                         />
                                                     );
@@ -1182,7 +1139,6 @@ function Grid({
                    onDrop={(e) => onDropGrid && onDropGrid(e)}
                    onDragLeave={onDragLeaveGrid}
                 >
-                    {/* Water Shimmer & Wave Overlays */}
                     <div className="absolute inset-0 water-sparkles pointer-events-none rounded-lg" />
                     <div className="absolute inset-0 water-waves pointer-events-none rounded-lg" />
 
@@ -1221,32 +1177,23 @@ function Grid({
                                     }
                                 `}
                             >
-                                {/* Center coordinates dot */}
                                 {cellStatus === 'empty' && (
                                     <div className="absolute inset-0 m-auto w-[2px] h-[2px] rounded-full bg-sky-400/50 pointer-events-none" />
                                 )}
 
-                                {/* Cannonball Water Splash Animation for Misses */}
                                 {cellStatus.endsWith('miss') && (
                                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
-                                        {/* Drop Cannonball */}
                                         <div className="w-2.5 h-2.5 bg-slate-400 rounded-full absolute z-20 animate-cannonball shadow-md" />
-                                        {/* Primary Splash Wave */}
                                         <div className="w-full h-full rounded-full border border-sky-400/80 absolute z-10 animate-splash" />
-                                        {/* Secondary Ripple Wave */}
                                         <div className="w-full h-full rounded-full border border-sky-300/40 absolute z-10 animate-ripple" style={{ animationDelay: '0.2s' }} />
-                                        {/* Permanent Water Ring Marker */}
                                         <div className="w-3 h-3 rounded-full border border-sky-500/50 bg-sky-950/20 shadow-[0_0_6px_rgba(56,189,248,0.2)]" />
                                     </div>
                                 )}
 
-                                {/* Fiery Explosion Animation for Hits */}
                                 {cellStatus.endsWith('hit') && (
                                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
-                                        {/* Explosive Orange/Yellow Flash */}
                                         <div className="w-full h-full rounded bg-gradient-to-br from-amber-400 via-orange-500 to-red-600 absolute z-20 animate-explosion-flash" />
                                         
-                                        {/* Particle Sparks shooting out */}
                                         <div className="absolute w-1.5 h-1.5 rounded-full bg-amber-400 z-30 animate-particle-1" />
                                         <div className="absolute w-1.5 h-1.5 rounded-full bg-orange-400 z-30 animate-particle-2" />
                                         <div className="absolute w-1.5 h-1.5 rounded-full bg-amber-300 z-30 animate-particle-3" />
@@ -1254,7 +1201,6 @@ function Grid({
                                         <div className="absolute w-1 h-1 rounded-full bg-yellow-300 z-30 animate-particle-5" />
                                         <div className="absolute w-1 h-1 rounded-full bg-orange-300 z-30 animate-particle-6" />
                                         
-                                        {/* Permanent Glowing Fire Peg */}
                                         <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-red-500 to-orange-600 border border-orange-400 z-10 animate-fire-glow shadow-[0_0_10px_#f97316]" />
                                     </div>
                                 )}
@@ -1262,12 +1208,11 @@ function Grid({
                         )
                     })}
                     
-                    {/* Render Ships (placed and custom styled) */}
+                    {/* Render Placed Ships */}
                     {!isTargetMode && myShips && myShips.map((ship: any) => {
                         const isHovered = hoverState && hoverState.shipId === ship.id;
                         const isSelected = selectedPlacedShipId === ship.id;
                         
-                        // Check if ship is sunk on my board using oppShots
                         const isSunk = ship.cells && ship.cells.every((cell: any) => 
                             oppShots && oppShots.some((s: any) => s.x === cell.x && s.y === cell.y && s.hit)
                         );
@@ -1276,33 +1221,28 @@ function Grid({
                             gridColumn: `${ship.x + 1} / span ${ship.isVertical ? 1 : ship.size}`,
                             gridRow: `${ship.y + 1} / span ${ship.isVertical ? ship.size : 1}`,
                             position: 'relative',
-                            border: isSelected 
-                                ? '2px solid #38bdf8' 
-                                : 'none',
-                            boxShadow: isSelected 
-                                ? '0 0 10px rgba(56, 189, 248, 0.8)' 
-                                : 'none',
-                            borderRadius: '4px',
+                            border: isSelected ? '2px solid #38bdf8' : 'none',
+                            boxShadow: isSelected ? '0 0 10px rgba(56, 189, 248, 0.8)' : 'none',
+                            borderRadius: '8px',
                             touchAction: 'none',
-                            opacity: isHovered ? 0.15 : isSunk ? 0.65 : 0.95, // Dim original ship to a shadow position during drag to maintain DOM stability, make sunk ships semi-transparent
+                            opacity: isHovered ? 0.15 : isSunk ? 0.65 : 0.95,
                             zIndex: 20,
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center'
+                            justifyContent: 'center',
+                            overflow: 'hidden'
                         };
 
-                        const imgStyle: React.CSSProperties = ship.isVertical ? {
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'fill',
-                            filter: isSunk ? 'grayscale(100%) brightness(60%) contrast(110%)' : 'none'
-                        } : {
-                            width: `${100 / ship.size}%`,
-                            height: `${ship.size * 100}%`,
-                            transform: 'rotate(90deg) translateY(-100%)',
-                            transformOrigin: '0 0',
-                            objectFit: 'fill',
-                            filter: isSunk ? 'grayscale(100%) brightness(60%) contrast(110%)' : 'none'
+                        // SỬA LẠI ĐOẠN NÀY
+                        const imgStyle: React.CSSProperties = {
+                            // Nếu dọc thì full 100%, nếu ngang thì lấy nghịch đảo tỷ lệ theo số ô của tàu
+                            width: ship.isVertical ? '100%' : `${100 / ship.size}%`,
+                            height: ship.isVertical ? '100%' : `${100 * ship.size}%`,
+                            objectFit: 'cover',
+                            filter: isSunk ? 'grayscale(100%) brightness(65%)' : 'none',
+                            transform: ship.isVertical ? 'none' : 'rotate(-90deg)',
+                            transformOrigin: 'center',
+                            flexShrink: 0 // Đảm bảo flexbox không bóp nghẹt kích thước ảnh
                         };
 
                         return (
@@ -1328,7 +1268,7 @@ function Grid({
                         );
                     })}
 
-                    {/* Temporary preview ship when dragging (either from dock or from board) */}
+                    {/* Temporary Preview Ship Overlay during Dragging */}
                     {!isTargetMode && dragInfo && hoverState && (
                         (() => {
                             const ship = dragInfo.ship;
@@ -1336,32 +1276,27 @@ function Grid({
                                 gridColumn: `${hoverState.hx + 1} / span ${ship.isVertical ? 1 : ship.size}`,
                                 gridRow: `${hoverState.hy + 1} / span ${ship.isVertical ? ship.size : 1}`,
                                 position: 'relative',
-                                border: hoverState.isValid
-                                    ? '2px solid #22c55e' 
-                                    : '2px solid #ef4444',
-                                boxShadow: hoverState.isValid
-                                    ? '0 0 15px rgba(34, 197, 94, 0.8)'
-                                    : '0 0 15px rgba(239, 68, 68, 0.8)',
-                                borderRadius: '4px',
+                                border: hoverState.isValid ? '2px solid #22c55e' : '2px solid #ef4444',
+                                boxShadow: hoverState.isValid ? '0 0 15px rgba(34, 197, 94, 0.8)' : '0 0 15px rgba(239, 68, 68, 0.8)',
+                                borderRadius: '8px',
                                 touchAction: 'none',
-                                opacity: 0.8,
+                                opacity: 0.7,
                                 pointerEvents: 'none',
                                 zIndex: 40,
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'center'
+                                justifyContent: 'center',
+                                overflow: 'hidden'
                             };
 
-                            const imgStyle: React.CSSProperties = ship.isVertical ? {
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'fill'
-                            } : {
-                                width: `${100 / ship.size}%`,
-                                height: `${ship.size * 100}%`,
-                                transform: 'rotate(90deg) translateY(-100%)',
-                                transformOrigin: '0 0',
-                                objectFit: 'fill'
+                            // SỬA LẠI ĐOẠN NÀY
+                            const imgStyle: React.CSSProperties = {
+                                width: ship.isVertical ? '100%' : `${100 / ship.size}%`,
+                                height: ship.isVertical ? '100%' : `${100 * ship.size}%`,
+                                objectFit: 'cover',
+                                transform: ship.isVertical ? 'none' : 'rotate(-90deg)',
+                                transformOrigin: 'center',
+                                flexShrink: 0
                             };
 
                             return (
@@ -1377,7 +1312,7 @@ function Grid({
                         })()
                     )}
 
-                    {/* Opponent Hit & Miss markers overlaying ships (with splash/explosion animations at z-index 30) */}
+                    {/* Opponent Hit & Miss Markers Overlay */}
                     {!isTargetMode && oppShots && oppShots.map((shot: any) => {
                         return (
                             <div 
@@ -1408,7 +1343,7 @@ function Grid({
                         );
                     })}
 
-                    {/* Hover preview overlay during dragging (subtle cell tints behind ship) */}
+                    {/* Hover Cell Previews */}
                     {hoverState && hoverState.cells.map((c: any) => {
                         if (c.x < 0 || c.x > 9 || c.y < 0 || c.y > 9) return null;
                         return (
@@ -1418,7 +1353,7 @@ function Grid({
                         )
                     })}
 
-                    {/* Glowing Targeting Reticle Overlay */}
+                    {/* Glowing Targeting Reticle */}
                     {isTargetMode && selectedTarget && (
                         <div 
                             style={{ 
