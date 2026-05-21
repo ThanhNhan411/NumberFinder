@@ -27,7 +27,8 @@ const adjustColorBrightness = (hex: string, percent: number) => {
 
 export default function BattleshipGame({ 
     socket, roomId, myPlayerId, status, turn, winner, 
-    p1Board, p2Board, p1Ready, p2Ready, p1Shots, p2Shots 
+    p1Board, p2Board, p1Ready, p2Ready, p1Shots, p2Shots,
+    turnTimeLeft
 }: any) {
     const isP1 = myPlayerId === 'P1';
     
@@ -99,32 +100,64 @@ export default function BattleshipGame({
         } catch (e) { }
     };
 
-    // Trigger sound and vibration when turn changes
+    // Trigger toast and audio on turn change
     useEffect(() => {
-        if (status === 'PLAYING' && turn === myPlayerId) {
+        if (status !== 'PLAYING') return;
+        
+        if (turn === myPlayerId) {
+            setToast("LƯỢT CỦA BẠN!");
             playEffect('turn');
+        } else {
+            setToast("LƯỢT CỦA ĐỐI THỦ!");
         }
+        
+        const t = setTimeout(() => setToast(null), 2500);
+        return () => clearTimeout(t);
     }, [turn, status, myPlayerId]);
 
+    // Listen to shot results to declare hit/miss
     useEffect(() => {
         const handleShootRes = (data: any) => {
             if (data.playerId === myPlayerId) {
                 if (data.hit) {
                     playEffect('hit');
+                    setToast("BẮN TRÚNG! BẠN ĐƯỢC BẮN TIẾP!");
                 } else {
                     playEffect('miss');
+                    setToast("HỤT RỒI! ĐẾN LƯỢT ĐỐI THỦ!");
                 }
             } else {
                 if (data.hit) {
                     playEffect('hit');
+                    setToast("ĐỐI THỦ BẮN TRÚNG! HỌ ĐƯỢC BẮN TIẾP!");
                 } else {
                     playEffect('miss');
+                    setToast("ĐỐI THỦ BẮN HỤT! ĐẾN LƯỢT BẠN!");
                 }
             }
+            setTimeout(() => setToast(null), 2500);
         };
         socket.on('battleshipShotResult', handleShootRes);
         return () => {
             socket.off('battleshipShotResult', handleShootRes);
+        };
+    }, [socket, myPlayerId]);
+
+    // Listen to turn timeouts
+    useEffect(() => {
+        const handleTimeout = (data: { previousTurn: string }) => {
+            if (data.previousTurn === myPlayerId) {
+                setToast("QUÁ 90 GIÂY! BẠN BỊ MẤT LƯỢT!");
+            } else {
+                setToast("ĐỐI THỦ HẾT GIỜ! LƯỢT CỦA BẠN!");
+            }
+            playEffect('miss');
+            setTimeout(() => setToast(null), 3000);
+        };
+        
+        socket.on('battleshipTurnTimeout', handleTimeout);
+        return () => {
+            socket.off('battleshipTurnTimeout', handleTimeout);
         };
     }, [socket, myPlayerId]);
 
@@ -653,7 +686,14 @@ export default function BattleshipGame({
             
             {/* Toast announcement */}
             {toast && (
-                <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 bg-red-600 border border-red-500 text-white font-mono font-black text-xs sm:text-sm tracking-widest px-6 py-3 rounded-full shadow-[0_0_20px_rgba(239,68,68,0.5)] animate-bounce text-center">
+                <div className={`absolute top-20 left-1/2 -translate-x-1/2 z-50 border font-mono font-black text-xs sm:text-sm tracking-widest px-6 py-3 rounded-full shadow-lg animate-bounce text-center transition-all duration-300
+                    ${toast.includes('LƯỢT CỦA BẠN') || toast.includes('LƯỢT CỦA BẠN!') || toast.includes('BẮN TÀU') || toast.includes('BẮN TRÚNG')
+                        ? 'bg-sky-600 border-sky-500 text-white shadow-sky-500/40 shadow-[0_0_15px_rgba(56,189,248,0.3)]' 
+                        : toast.includes('ĐỐI THỦ') 
+                            ? 'bg-slate-850 border-slate-750 text-slate-300 shadow-slate-900/40' 
+                            : 'bg-red-600 border-red-500 text-white shadow-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.3)]'
+                    }
+                `}>
                     {toast}
                 </div>
             )}
@@ -810,6 +850,52 @@ export default function BattleshipGame({
 
                 {status === 'PLAYING' && (
                     <div className="flex flex-col w-full flex-1 justify-center py-2 max-w-sm">
+                        {/* Turn Status & Timer Banner */}
+                        <div className="mb-3 px-2">
+                            <div className={`w-full p-3 rounded-2xl border transition-all duration-300 flex items-center justify-between shadow-md
+                                ${turn === myPlayerId 
+                                    ? 'bg-sky-950/30 border-sky-500/30 shadow-[0_0_15px_rgba(56,189,248,0.05)]' 
+                                    : 'bg-slate-900/30 border-slate-800'
+                                }`
+                            }>
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-2.5 h-2.5 rounded-full relative flex items-center justify-center">
+                                        <div className={`absolute w-full h-full rounded-full animate-ping opacity-75 
+                                            ${turn === myPlayerId ? 'bg-sky-400' : 'bg-rose-500'}`} 
+                                        />
+                                        <div className={`w-2 h-2 rounded-full relative 
+                                            ${turn === myPlayerId ? 'bg-sky-400' : 'bg-rose-500'}`} 
+                                        />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className={`text-xs font-black tracking-widest uppercase
+                                            ${turn === myPlayerId ? 'text-sky-400' : 'text-slate-400'}`}>
+                                            {turn === myPlayerId ? 'Lượt của bạn' : 'Lượt đối thủ'}
+                                        </span>
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                            {turn === myPlayerId ? 'Chọn mục tiêu & Bắn!' : 'Chờ đối thủ nổ súng...'}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                {turnTimeLeft !== undefined && turnTimeLeft !== null && (
+                                    <div className="flex flex-col items-end">
+                                        <span className={`font-mono text-sm font-black tracking-tighter leading-none
+                                            ${turnTimeLeft <= 15 ? 'text-rose-500 animate-pulse font-extrabold text-base' : 'text-slate-200'}`}>
+                                            ⏱️ {turnTimeLeft}s
+                                        </span>
+                                        <div className="w-16 h-1 bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+                                            <div 
+                                                className={`h-full transition-all duration-1000 rounded-full
+                                                    ${turnTimeLeft <= 15 ? 'bg-rose-500 animate-pulse' : turnTimeLeft <= 40 ? 'bg-amber-400' : 'bg-sky-400'}`}
+                                                style={{ width: `${(turnTimeLeft / 90) * 100}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
                         {/* Opponent's Board (Top Target Grid) */}
                         <div className="flex flex-col mb-2 w-full px-2">
                             <div className="flex justify-between items-center mb-1 px-1">
@@ -1055,17 +1141,37 @@ function Grid({
                                     <div className="absolute inset-0 m-auto w-[2px] h-[2px] rounded-full bg-slate-700/60 pointer-events-none" />
                                 )}
 
-                                {/* Hit and Miss peg overlays inside cell */}
-                                {cellStatus === 'my_miss' && (
-                                    <div className="absolute inset-0 m-auto w-2.5 h-2.5 rounded-full bg-slate-500 border border-slate-400 opacity-90 shadow-md pointer-events-none" />
-                                )}
-                                {cellStatus === 'my_hit' && (
-                                    <div className="absolute inset-0 flex border border-red-500 rounded-sm bg-red-500/20 items-center justify-center pointer-events-none">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]" />
+                                {/* Cannonball Water Splash Animation for Misses */}
+                                {cellStatus.endsWith('miss') && (
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+                                        {/* Drop Cannonball */}
+                                        <div className="w-2.5 h-2.5 bg-slate-400 rounded-full absolute z-20 animate-cannonball shadow-md" />
+                                        {/* Primary Splash Wave */}
+                                        <div className="w-full h-full rounded-full border border-sky-400/80 absolute z-10 animate-splash" />
+                                        {/* Secondary Ripple Wave */}
+                                        <div className="w-full h-full rounded-full border border-sky-300/40 absolute z-10 animate-ripple" style={{ animationDelay: '0.2s' }} />
+                                        {/* Permanent Water Ring Marker */}
+                                        <div className="w-3 h-3 rounded-full border border-sky-500/50 bg-sky-950/20 shadow-[0_0_6px_rgba(56,189,248,0.2)]" />
                                     </div>
                                 )}
-                                {cellStatus === 'opp_miss' && (
-                                    <div className="absolute inset-0 m-auto w-2 h-2 rounded-full bg-slate-500 opacity-60 pointer-events-none" />
+
+                                {/* Fiery Explosion Animation for Hits */}
+                                {cellStatus.endsWith('hit') && (
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+                                        {/* Explosive Orange/Yellow Flash */}
+                                        <div className="w-full h-full rounded bg-gradient-to-br from-amber-400 via-orange-500 to-red-600 absolute z-20 animate-explosion-flash" />
+                                        
+                                        {/* Particle Sparks shooting out */}
+                                        <div className="absolute w-1.5 h-1.5 rounded-full bg-amber-400 z-30 animate-particle-1" />
+                                        <div className="absolute w-1.5 h-1.5 rounded-full bg-orange-400 z-30 animate-particle-2" />
+                                        <div className="absolute w-1.5 h-1.5 rounded-full bg-amber-300 z-30 animate-particle-3" />
+                                        <div className="absolute w-1.5 h-1.5 rounded-full bg-red-400 z-30 animate-particle-4" />
+                                        <div className="absolute w-1 h-1 rounded-full bg-yellow-300 z-30 animate-particle-5" />
+                                        <div className="absolute w-1 h-1 rounded-full bg-orange-300 z-30 animate-particle-6" />
+                                        
+                                        {/* Permanent Glowing Fire Peg */}
+                                        <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-red-500 to-orange-600 border border-orange-400 z-10 animate-fire-glow shadow-[0_0_10px_#f97316]" />
+                                    </div>
                                 )}
                             </div>
                         )
@@ -1175,20 +1281,35 @@ function Grid({
                         })()
                     )}
 
-                    {/* Opponent Hit markers overlaying ships (correctly grid positioned without relative container expansion bugs) */}
+                    {/* Opponent Hit & Miss markers overlaying ships (with splash/explosion animations at z-index 30) */}
                     {!isTargetMode && oppShots && oppShots.map((shot: any) => {
-                        if (shot.hit) {
-                            return (
-                                <div 
-                                    key={`opp-hit-${shot.x}-${shot.y}`}
-                                    style={{ gridColumn: shot.x + 1, gridRow: shot.y + 1 }}
-                                    className="w-full h-full flex items-center justify-center pointer-events-none z-30 animate-pulse"
-                                >
-                                    <div className="w-2.5 h-2.5 rounded-full border border-white bg-red-500 shadow-[0_0_8px_#ef4444]" />
-                                </div>
-                            );
-                        }
-                        return null;
+                        return (
+                            <div 
+                                key={`opp-shot-${shot.x}-${shot.y}`}
+                                style={{ gridColumn: shot.x + 1, gridRow: shot.y + 1 }}
+                                className="w-full h-full flex items-center justify-center pointer-events-none z-30 overflow-hidden"
+                            >
+                                {shot.hit ? (
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+                                        <div className="w-full h-full rounded bg-gradient-to-br from-amber-400 via-orange-500 to-red-600 absolute z-20 animate-explosion-flash" />
+                                        <div className="absolute w-1.5 h-1.5 rounded-full bg-amber-400 z-30 animate-particle-1" />
+                                        <div className="absolute w-1.5 h-1.5 rounded-full bg-orange-400 z-30 animate-particle-2" />
+                                        <div className="absolute w-1.5 h-1.5 rounded-full bg-amber-300 z-30 animate-particle-3" />
+                                        <div className="absolute w-1.5 h-1.5 rounded-full bg-red-400 z-30 animate-particle-4" />
+                                        <div className="absolute w-1 h-1 rounded-full bg-yellow-300 z-30 animate-particle-5" />
+                                        <div className="absolute w-1 h-1 rounded-full bg-orange-300 z-30 animate-particle-6" />
+                                        <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-red-500 to-orange-600 border border-orange-400 z-10 animate-fire-glow shadow-[0_0_10px_#f97316]" />
+                                    </div>
+                                ) : (
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+                                        <div className="w-2.5 h-2.5 bg-slate-400 rounded-full absolute z-20 animate-cannonball shadow-md" />
+                                        <div className="w-full h-full rounded-full border border-sky-400/80 absolute z-10 animate-splash" />
+                                        <div className="w-full h-full rounded-full border border-sky-300/40 absolute z-10 animate-ripple" style={{ animationDelay: '0.2s' }} />
+                                        <div className="w-3 h-3 rounded-full border border-sky-500/50 bg-sky-950/20 shadow-[0_0_6px_rgba(56,189,248,0.2)]" />
+                                    </div>
+                                )}
+                            </div>
+                        );
                     })}
 
                     {/* Hover preview overlay during dragging (subtle cell tints behind ship) */}

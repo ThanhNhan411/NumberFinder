@@ -32,6 +32,7 @@ export default function App() {
   const [p2Ready, setP2Ready] = useState(false);
   const [p1Shots, setP1Shots] = useState<any[]>([]);
   const [p2Shots, setP2Shots] = useState<any[]>([]);
+  const [turnTimeLeft, setTurnTimeLeft] = useState<number | null>(null);
 
   useEffect(() => {
      socket = io(window.location.origin);
@@ -67,6 +68,11 @@ export default function App() {
          setP2Ready(state.p2Ready);
          setP1Shots(state.p1Shots || []);
          setP2Shots(state.p2Shots || []);
+         setTurnTimeLeft(state.turnTimeLeft !== undefined ? state.turnTimeLeft : null);
+     });
+
+     socket.on('battleshipTimer', (data) => {
+         setTurnTimeLeft(data.turnTimeLeft);
      });
 
      socket.on('correctClick', () => playAudio('correct'));
@@ -227,6 +233,7 @@ export default function App() {
               p2Ready={p2Ready}
               p1Shots={p1Shots}
               p2Shots={p2Shots}
+              turnTimeLeft={turnTimeLeft}
           />
       );
   }

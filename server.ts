@@ -171,6 +171,7 @@ async function startServer() {
 
           if (room.p1Ready && room.p2Ready) {
               room.status = 'PLAYING';
+              room.turnTimeLeft = 90;
           }
           
           // emit sanitized state without revealing opponent's board if playing
@@ -224,8 +225,11 @@ async function startServer() {
               room.winner = playerId;
               room.status = 'GAME_OVER';
           } else {
-              room.turn = isP1 ? 'P2' : 'P1';
+              if (!hit) {
+                  room.turn = isP1 ? 'P2' : 'P1';
+              }
           }
+          room.turnTimeLeft = 90;
 
           io.to(roomId).emit("gameState", sanitizeBattleshipRoom(room));
       });
@@ -313,6 +317,35 @@ async function startServer() {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
+
+  // Battleship turn timer tick loop (runs every second)
+  setInterval(() => {
+      for (const roomId in rooms) {
+          const room = rooms[roomId];
+          if (room.gameType === 'BATTLESHIP' && room.status === 'PLAYING') {
+              if (room.turnTimeLeft === undefined || room.turnTimeLeft === null) {
+                  room.turnTimeLeft = 90;
+              }
+              
+              room.turnTimeLeft--;
+              
+              if (room.turnTimeLeft <= 0) {
+                  const timedOutPlayer = room.turn;
+                  const nextTurn = room.turn === 'P1' ? 'P2' : 'P1';
+                  room.turn = nextTurn;
+                  room.turnTimeLeft = 90;
+                  
+                  // Emit timeout event (so client knows which player lost their turn)
+                  io.to(roomId).emit("battleshipTurnTimeout", { previousTurn: timedOutPlayer, turn: nextTurn });
+                  // Emit full updated game state
+                  io.to(roomId).emit("gameState", sanitizeBattleshipRoom(room));
+              } else {
+                  // Emit active timer update
+                  io.to(roomId).emit("battleshipTimer", { turnTimeLeft: room.turnTimeLeft, turn: room.turn });
+              }
+          }
+      }
+  }, 1000);
 
   httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);

@@ -28,3 +28,147 @@ body {
 .animate-shake {
     animation: shake 0.4s ease-in-out;
 }
+
+/* Splash/Ripple Animation for Misses */
+@keyframes cannonball-drop {
+  0% {
+    transform: translateY(-60px) scale(2.5);
+    opacity: 0;
+  }
+  40% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(0) scale(1.1);
+    opacity: 0.8;
+  }
+  60% {
+    transform: translateY(0) scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(0);
+    opacity: 0;
+  }
+}
+
+@keyframes water-splash {
+  0%, 40% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(0.3);
+    opacity: 1;
+    border-width: 3px;
+  }
+  80% {
+    transform: scale(1.2);
+    opacity: 0.5;
+    border-width: 1px;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+    border-width: 0.5px;
+  }
+}
+
+@keyframes water-ripple {
+  0%, 55% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  65% {
+    transform: scale(0.3);
+    opacity: 0.8;
+  }
+  90% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+
+.animate-cannonball {
+  animation: cannonball-drop 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.animate-splash {
+  animation: water-splash 1.2s ease-out forwards;
+}
+
+.animate-ripple {
+  animation: water-ripple 1.4s ease-out forwards;
+}
+
+/* Explosion / Fire Animation for Hits */
+@keyframes explosion-flash {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+    filter: brightness(2);
+  }
+  20% {
+    transform: scale(1.4);
+    opacity: 1;
+    filter: brightness(1.5);
+  }
+  40% {
+    transform: scale(1.2);
+    filter: brightness(1.2);
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+}
+
+@keyframes particle-fly-1 {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(-15px, -15px) scale(0); opacity: 0; }
+}
+@keyframes particle-fly-2 {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(15px, -15px) scale(0); opacity: 0; }
+}
+@keyframes particle-fly-3 {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(-15px, 15px) scale(0); opacity: 0; }
+}
+@keyframes particle-fly-4 {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(15px, 15px) scale(0); opacity: 0; }
+}
+@keyframes particle-fly-5 {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(0, -18px) scale(0); opacity: 0; }
+}
+@keyframes particle-fly-6 {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(0, 18px) scale(0); opacity: 0; }
+}
+
+@keyframes fire-glow {
+  0%, 100% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 6px #ef4444; }
+  50% { transform: scale(1.15); opacity: 1; box-shadow: 0 0 12px #f97316; }
+}
+
+.animate-explosion-flash {
+  animation: explosion-flash 0.6s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+}
+
+.animate-fire-glow {
+  animation: fire-glow 1.5s ease-in-out infinite;
+}
+
+.animate-particle-1 { animation: particle-fly-1 0.7s ease-out forwards; }
+.animate-particle-2 { animation: particle-fly-2 0.7s ease-out forwards; }
+.animate-particle-3 { animation: particle-fly-3 0.7s ease-out forwards; }
+.animate-particle-4 { animation: particle-fly-4 0.7s ease-out forwards; }
+.animate-particle-5 { animation: particle-fly-5 0.7s ease-out forwards; }
+.animate-particle-6 { animation: particle-fly-6 0.7s ease-out forwards; }
