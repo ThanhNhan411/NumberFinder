@@ -46,6 +46,9 @@ export default function BattleshipGame({
     const [sunkShips, setSunkShips] = useState<string[]>([]);
     const [mySunkShips, setMySunkShips] = useState<string[]>([]);
 
+    // Mobile view tab state ('attack' | 'defense')
+    const [activeTab, setActiveTab] = useState<'attack' | 'defense'>('attack');
+
     const gridRef = useRef<HTMLDivElement>(null);
     const gridRectRef = useRef<DOMRect | null>(null);
     const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -160,6 +163,17 @@ export default function BattleshipGame({
             socket.off('battleshipTurnTimeout', handleTimeout);
         };
     }, [socket, myPlayerId]);
+
+    // Auto-switch tabs on turn change
+    useEffect(() => {
+        if (status === 'PLAYING') {
+            if (turn === myPlayerId) {
+                setActiveTab('attack');
+            } else {
+                setActiveTab('defense');
+            }
+        }
+    }, [turn, status, myPlayerId]);
 
     const myBoardState = isP1 ? p1Board : p2Board;
     const oppBoardState = isP1 ? p2Board : p1Board; 
@@ -698,7 +712,7 @@ export default function BattleshipGame({
                 </div>
             )}
 
-            <div className="flex flex-col items-center justify-center p-4 h-full relative max-w-lg mx-auto w-full">
+            <div className="flex flex-col items-center justify-center p-4 h-full relative max-w-lg md:max-w-4xl mx-auto w-full">
                 
                 <h1 className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-pink-500 mb-2">SEA STRIKE</h1>
 
@@ -849,9 +863,10 @@ export default function BattleshipGame({
                 )}
 
                 {status === 'PLAYING' && (
-                    <div className="flex flex-col w-full flex-1 justify-center py-2 max-w-sm">
+                    <div className="flex flex-col w-full flex-1 justify-start py-2 max-w-md md:max-w-4xl overflow-y-auto">
+                        
                         {/* Turn Status & Timer Banner */}
-                        <div className="mb-3 px-2">
+                        <div className="mb-3 px-2 w-full flex-shrink-0">
                             <div className={`w-full p-3 rounded-2xl border transition-all duration-300 flex items-center justify-between shadow-md
                                 ${turn === myPlayerId 
                                     ? 'bg-sky-950/30 border-sky-500/30 shadow-[0_0_15px_rgba(56,189,248,0.05)]' 
@@ -863,7 +878,7 @@ export default function BattleshipGame({
                                         <div className={`absolute w-full h-full rounded-full animate-ping opacity-75 
                                             ${turn === myPlayerId ? 'bg-sky-400' : 'bg-rose-500'}`} 
                                         />
-                                        <div className={`w-2 h-2 rounded-full relative 
+                                        <div className={`w-2.5 h-2.5 rounded-full relative 
                                             ${turn === myPlayerId ? 'bg-sky-400' : 'bg-rose-500'}`} 
                                         />
                                     </div>
@@ -896,144 +911,184 @@ export default function BattleshipGame({
                             </div>
                         </div>
 
-                        {/* Opponent's Board (Top Target Grid) */}
-                        <div className="flex flex-col mb-2 w-full px-2">
-                            <div className="flex justify-between items-center mb-1 px-1">
-                                <span className={`text-xs font-bold uppercase tracking-widest ${turn === myPlayerId ? 'text-sky-400 animate-pulse' : 'text-slate-500'}`}>
-                                    Enemy Waters {turn === myPlayerId && '- YOUR TURN'}
+                        {/* Mobile Tab Switcher */}
+                        <div className="flex gap-2 px-2 mb-3 md:hidden w-full flex-shrink-0">
+                            <button
+                                onClick={() => setActiveTab('attack')}
+                                className={`flex-1 py-2.5 rounded-xl font-bold text-xs tracking-widest transition-all border flex items-center justify-center gap-1.5
+                                    ${activeTab === 'attack'
+                                        ? 'bg-sky-600/20 border-sky-500 text-sky-400 font-extrabold shadow-[0_0_8px_rgba(56,189,248,0.2)]'
+                                        : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-400'
+                                    }`}
+                            >
+                                <span className="relative flex h-2 w-2">
+                                    {turn === myPlayerId && (
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                                    )}
+                                    <span className={`relative inline-flex rounded-full h-2 w-2 ${turn === myPlayerId ? 'bg-sky-400' : 'bg-slate-750'}`}></span>
                                 </span>
-                                {turn === myPlayerId && selectedTarget && (
-                                    <span className="text-[10px] font-mono text-sky-400 font-bold bg-sky-950/40 px-1.5 py-0.5 border border-sky-900/50 rounded">
-                                        TARGET: {cols[selectedTarget.x]}{selectedTarget.y + 1}
+                                LƯỚI TẤN CÔNG
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('defense')}
+                                className={`flex-1 py-2.5 rounded-xl font-bold text-xs tracking-widest transition-all border flex items-center justify-center gap-1.5
+                                    ${activeTab === 'defense'
+                                        ? 'bg-rose-600/20 border-rose-500 text-rose-400 font-extrabold shadow-[0_0_8px_rgba(244,63,94,0.2)]'
+                                        : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-400'
+                                    }`}
+                            >
+                                <span className="relative flex h-2 w-2">
+                                    {turn !== myPlayerId && (
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                    )}
+                                    <span className={`relative inline-flex rounded-full h-2 w-2 ${turn !== myPlayerId ? 'bg-rose-400' : 'bg-slate-750'}`}></span>
+                                </span>
+                                ĐỘI TÀU CỦA BẠN
+                            </button>
+                        </div>
+
+                        {/* Dual Board Layout Container */}
+                        <div className="flex flex-col md:flex-row w-full gap-4 md:gap-8 justify-center items-center md:items-stretch px-2 pb-4">
+                            
+                            {/* Opponent's Board (Left Column) */}
+                            <div className={`flex-1 flex flex-col w-full max-w-sm ${activeTab === 'attack' ? 'block' : 'hidden md:flex'}`}>
+                                <div className="flex justify-between items-center mb-1.5 px-1">
+                                    <span className={`text-xs font-bold uppercase tracking-widest ${turn === myPlayerId ? 'text-sky-400 animate-pulse' : 'text-slate-500'}`}>
+                                        Enemy Waters {turn === myPlayerId && '- YOUR TURN'}
                                     </span>
+                                    {turn === myPlayerId && selectedTarget && (
+                                        <span className="text-[10px] font-mono text-sky-400 font-bold bg-sky-950/40 px-1.5 py-0.5 border border-sky-900/50 rounded">
+                                            TARGET: {cols[selectedTarget.x]}{selectedTarget.y + 1}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className={`transition-opacity w-full ${turn !== myPlayerId ? 'opacity-40 pointer-events-none' : ''}`}>
+                                    <Grid 
+                                        size={10} 
+                                        gridRef={gridRef}
+                                        onCellTap={handleGridTap} 
+                                        myShips={[]} 
+                                        oppShots={[]} 
+                                        myShots={myShots} 
+                                        isTargetMode 
+                                        selectedTarget={selectedTarget}
+                                    />
+                                </div>
+                                
+                                {/* Opponent Fleet Radar (Status Bars) */}
+                                <div className="flex justify-center items-center gap-1 mt-2.5 px-1.5 py-1.5 bg-slate-900/40 border border-slate-900 rounded-lg w-full flex-shrink-0">
+                                    {opponentFleet.map((ship) => (
+                                        <div 
+                                            key={ship.id} 
+                                            className={`flex flex-col items-center p-1 rounded border text-center transition-all flex-1 ${
+                                                ship.isSunk 
+                                                    ? 'bg-red-950/10 border-red-900/30 text-red-500/40 line-through opacity-50' 
+                                                    : ship.hitCount > 0
+                                                        ? 'bg-amber-950/15 border-amber-600/30 text-amber-300'
+                                                        : 'bg-slate-900/30 border-slate-800/60 text-slate-500'
+                                            }`}
+                                        >
+                                            <span className="text-[8px] font-mono font-bold uppercase tracking-wider mb-0.5">{ship.name}</span>
+                                            <div className="flex gap-0.5">
+                                                {Array.from({ length: ship.size }).map((_, idx) => {
+                                                    const isHit = idx < ship.hitCount;
+                                                    return (
+                                                        <div 
+                                                            key={idx} 
+                                                            className={`w-1 h-1 rounded-full ${
+                                                                ship.isSunk 
+                                                                    ? 'bg-red-500' 
+                                                                    : isHit 
+                                                                        ? 'bg-amber-400' 
+                                                                        : 'bg-slate-700'
+                                                            }`} 
+                                                        />
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Fire Control System Console */}
+                                {turn === myPlayerId && (
+                                    <div className="mt-2.5 flex items-center gap-2.5 w-full flex-shrink-0">
+                                        <div className="flex-1 font-mono text-[10px] text-slate-500 bg-slate-950/80 p-2 border border-slate-900 rounded-lg h-[38px] flex items-center">
+                                            {selectedTarget ? (
+                                                <span className="text-sky-400 animate-pulse text-[9.5px]">LOCKED ON {cols[selectedTarget.x]}{selectedTarget.y + 1}. READY TO FIRE.</span>
+                                            ) : (
+                                                <span className="text-slate-600 uppercase tracking-wider text-[9.5px]">Acquire target coordinates...</span>
+                                            )}
+                                        </div>
+                                        <button
+                                            onClick={handleFire}
+                                            disabled={!selectedTarget}
+                                            className="px-5 py-2 bg-red-600 hover:bg-red-500 disabled:bg-slate-900 disabled:text-slate-700 disabled:border-slate-900 text-white rounded-lg font-bold tracking-widest text-xs transition-all border border-red-500 shadow-[0_0_12px_rgba(239,68,68,0.2)] active:scale-95 disabled:active:scale-100 flex-shrink-0 h-[38px]"
+                                        >
+                                            FIRE!
+                                        </button>
+                                    </div>
                                 )}
                             </div>
-                            <div className={`transition-opacity w-full ${turn !== myPlayerId ? 'opacity-40 pointer-events-none' : ''}`}>
-                                <Grid 
-                                    size={10} 
-                                    gridRef={gridRef}
-                                    onCellTap={handleGridTap} 
-                                    myShips={[]} 
-                                    oppShots={[]} 
-                                    myShots={myShots} 
-                                    isTargetMode 
-                                    selectedTarget={selectedTarget}
-                                />
-                            </div>
-                            
-                            {/* Opponent Fleet Radar (Status Bars) */}
-                            <div className="flex justify-center items-center gap-1 mt-2 px-1 py-1.5 bg-slate-900/40 border border-slate-900 rounded-lg">
-                                {opponentFleet.map((ship) => (
-                                    <div 
-                                        key={ship.id} 
-                                        className={`flex flex-col items-center p-1 rounded border text-center transition-all flex-1 ${
-                                            ship.isSunk 
-                                                ? 'bg-red-950/10 border-red-900/30 text-red-500/40 line-through opacity-50' 
-                                                : ship.hitCount > 0
-                                                    ? 'bg-amber-950/15 border-amber-600/30 text-amber-300'
-                                                    : 'bg-slate-900/30 border-slate-800/60 text-slate-500'
-                                        }`}
-                                    >
-                                        <span className="text-[8px] font-mono font-bold uppercase tracking-wider mb-0.5">{ship.name}</span>
-                                        <div className="flex gap-0.5">
-                                            {Array.from({ length: ship.size }).map((_, idx) => {
-                                                const isHit = idx < ship.hitCount;
-                                                return (
-                                                    <div 
-                                                        key={idx} 
-                                                        className={`w-1 h-1 rounded-full ${
-                                                            ship.isSunk 
-                                                                ? 'bg-red-500' 
-                                                                : isHit 
-                                                                    ? 'bg-amber-400' 
-                                                                    : 'bg-slate-700'
-                                                        }`} 
-                                                    />
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
 
-                            {/* Fire Control System Console */}
-                            {turn === myPlayerId && (
-                                <div className="mt-2.5 flex items-center gap-2.5 w-full">
-                                    <div className="flex-1 font-mono text-[10px] text-slate-500 bg-slate-950/80 p-2 border border-slate-900 rounded-lg h-[38px] flex items-center">
-                                        {selectedTarget ? (
-                                            <span className="text-sky-400 animate-pulse">LOCKED ON {cols[selectedTarget.x]}{selectedTarget.y + 1}. READY TO FIRE.</span>
-                                        ) : (
-                                            <span className="text-slate-600 uppercase tracking-wider">Acquire target coordinates...</span>
-                                        )}
-                                    </div>
-                                    <button
-                                        onClick={handleFire}
-                                        disabled={!selectedTarget}
-                                        className="px-5 py-2 bg-red-600 hover:bg-red-500 disabled:bg-slate-900 disabled:text-slate-700 disabled:border-slate-900 text-white rounded-lg font-bold tracking-widest text-xs transition-all border border-red-500 shadow-[0_0_12px_rgba(239,68,68,0.2)] active:scale-95 disabled:active:scale-100 flex-shrink-0 h-[38px]"
-                                    >
-                                        FIRE!
-                                    </button>
+                            {/* Divider (Desktop Only) */}
+                            <div className="hidden md:flex w-px bg-slate-900 mx-1 relative self-stretch items-center justify-center">
+                                <div className="absolute top-1/2 -translate-y-1/2 -left-2 w-4 h-4 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-slate-700"></div>
                                 </div>
-                            )}
-                        </div>
-
-                        {/* Divider */}
-                        <div className="w-full h-px bg-slate-900 my-1 relative">
-                            <div className="absolute left-1/2 -translate-x-1/2 -top-2 w-4 h-4 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center">
-                                <div className="w-1.5 h-1.5 rounded-full bg-slate-700"></div>
-                            </div>
-                        </div>
-
-                        {/* My Board (Bottom Grid) */}
-                        <div className="flex flex-col mt-2 opacity-85 scale-95 origin-bottom w-full px-2">
-                            <div className="flex justify-between items-center mb-1 px-1">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                                    Your Fleet
-                                </span>
-                            </div>
-                            <div className="w-full">
-                                <Grid 
-                                    size={10} 
-                                    onCellTap={()=>{}} 
-                                    myShips={myBoardState || placedShips} 
-                                    oppShots={oppShots} 
-                                    myShots={[]} 
-                                    shrink 
-                                />
                             </div>
 
-                            {/* My Fleet Status pegs */}
-                            <div className="flex justify-center items-center gap-1 mt-2 px-1 py-1.5 bg-slate-900/20 border border-slate-900/50 rounded-lg">
-                                {myFleet.map((ship) => (
-                                    <div 
-                                        key={ship.id} 
-                                        className={`flex flex-col items-center p-0.5 rounded text-center transition-all flex-1 ${
-                                            ship.isSunk 
-                                                ? 'text-red-500/50 opacity-40' 
-                                                : 'text-slate-500'
-                                        }`}
-                                    >
-                                        <span className="text-[7.5px] font-mono uppercase tracking-wider mb-0.5">{ship.name}</span>
-                                        <div className="flex gap-0.5">
-                                            {Array.from({ length: ship.size }).map((_, idx) => {
-                                                const isHit = idx < ship.hitCount;
-                                                return (
-                                                    <div 
-                                                        key={idx} 
-                                                        className={`w-0.5 h-0.5 rounded-full ${
-                                                            ship.isSunk 
-                                                                ? 'bg-red-500' 
-                                                                : isHit 
-                                                                    ? 'bg-red-400' 
-                                                                    : 'bg-slate-700'
-                                                        }`} 
-                                                    />
-                                                );
-                                            })}
+                            {/* My Board (Right Column) */}
+                            <div className={`flex-1 flex flex-col w-full max-w-sm ${activeTab === 'defense' ? 'block' : 'hidden md:flex'}`}>
+                                <div className="flex justify-between items-center mb-1.5 px-1">
+                                    <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                                        Your Fleet
+                                    </span>
+                                </div>
+                                <div className="w-full">
+                                    <Grid 
+                                        size={10} 
+                                        onCellTap={()=>{}} 
+                                        myShips={myBoardState || placedShips} 
+                                        oppShots={oppShots} 
+                                        myShots={[]} 
+                                    />
+                                </div>
+
+                                {/* My Fleet Status pegs */}
+                                <div className="flex justify-center items-center gap-1 mt-2.5 px-1.5 py-1.5 bg-slate-900/20 border border-slate-900/50 rounded-lg w-full flex-shrink-0">
+                                    {myFleet.map((ship) => (
+                                        <div 
+                                            key={ship.id} 
+                                            className={`flex flex-col items-center p-0.5 rounded text-center transition-all flex-1 ${
+                                                ship.isSunk 
+                                                    ? 'text-red-500/50 opacity-40' 
+                                                    : 'text-slate-500'
+                                            }`}
+                                        >
+                                            <span className="text-[7.5px] font-mono uppercase tracking-wider mb-0.5">{ship.name}</span>
+                                            <div className="flex gap-0.5">
+                                                {Array.from({ length: ship.size }).map((_, idx) => {
+                                                    const isHit = idx < ship.hitCount;
+                                                    return (
+                                                        <div 
+                                                            key={idx} 
+                                                            className={`w-0.5 h-0.5 rounded-full ${
+                                                                ship.isSunk 
+                                                                    ? 'bg-red-500' 
+                                                                    : isHit 
+                                                                        ? 'bg-red-400' 
+                                                                        : 'bg-slate-700'
+                                                            }`} 
+                                                        />
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
+
                         </div>
                     </div>
                 )}
