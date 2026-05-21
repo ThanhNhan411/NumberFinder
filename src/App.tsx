@@ -73,6 +73,15 @@ export default function App() {
 
      socket.on('battleshipTimer', (data) => {
          setTurnTimeLeft(data.turnTimeLeft);
+         if (data.turn) {
+             setTurn(data.turn);
+         }
+     });
+
+     socket.on('battleshipTurnTimeout', (data) => {
+         if (data.turn) {
+             setTurn(data.turn);
+         }
      });
 
      socket.on('correctClick', () => playAudio('correct'));
