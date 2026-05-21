@@ -255,8 +255,30 @@ async function startServer() {
           io.to(roomId).emit("gameState", room);
       });
 
+      socket.on("rejoinRoom", ({ roomId, playerId }) => {
+          const room = rooms[roomId];
+          if (!room) {
+              socket.emit("error", "Room not found.");
+              return;
+          }
+          // Update the socket ID for this player
+          if (playerId === 'P1' && room.players.P1) {
+              room.players.P1 = socket.id;
+          } else if (playerId === 'P2' && room.players.P2) {
+              room.players.P2 = socket.id;
+          } else {
+              socket.emit("error", "Player not found in room.");
+              return;
+          }
+          socket.join(roomId);
+          console.log(`Player ${playerId} rejoined room ${roomId} with new socket ${socket.id}`);
+          // Re-emit full game state so client can restore UI
+          socket.emit("roomJoined", { roomId, playerId, gameType: room.gameType });
+          socket.emit("gameState", sanitizeBattleshipRoom(room));
+      });
+
       socket.on("disconnect", () => {
-          // If a player disconnects, we might clean up or handle reconnection. For simplicity, we just log.
+          // Log disconnect; client will rejoin on reconnect
           console.log(`Socket disconnected: ${socket.id}`);
       });
   });

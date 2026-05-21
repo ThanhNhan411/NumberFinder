@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import NumberBoard from './components/NumberBoard';
 import PlayerPanel from './components/PlayerPanel';
 import BattleshipGame from './components/Battleship';
@@ -25,6 +25,11 @@ export default function App() {
   const [numbersData, setNumbersData] = useState<any[]>([]);
   const [foundNumbers, setFoundNumbers] = useState<Set<number>>(new Set());
 
+  // Refs to access current values inside socket callbacks (avoid stale closures)
+  const roomIdRef = useRef('');
+  const myPlayerIdRef = useRef<'P1' | 'P2' | null>(null);
+  const inLobbyRef = useRef(true);
+
   // Battleship states
   const [p1Board, setP1Board] = useState<any>(null);
   const [p2Board, setP2Board] = useState<any>(null);
@@ -35,10 +40,26 @@ export default function App() {
   const [turnTimeLeft, setTurnTimeLeft] = useState<number | null>(null);
 
   useEffect(() => {
-     socket = io(window.location.origin);
-     socket.on('connect', () => console.log('Connected to server'));
+     socket = io(window.location.origin, {
+         // Enable auto-reconnection with short delay
+         reconnection: true,
+         reconnectionDelay: 500,
+         reconnectionAttempts: Infinity,
+     });
+
+     socket.on('connect', () => {
+         console.log('Connected to server:', socket.id);
+         // Auto-rejoin room if we were in one (e.g. after phone went to background)
+         if (!inLobbyRef.current && roomIdRef.current && myPlayerIdRef.current) {
+             console.log('Rejoining room after reconnect:', roomIdRef.current, myPlayerIdRef.current);
+             socket.emit('rejoinRoom', { roomId: roomIdRef.current, playerId: myPlayerIdRef.current });
+         }
+     });
 
      socket.on('roomCreated', (data) => {
+         roomIdRef.current = data.roomId;
+         myPlayerIdRef.current = data.playerId;
+         inLobbyRef.current = false;
          setRoomId(data.roomId);
          setMyPlayerId(data.playerId);
          setGameType(data.gameType);
@@ -46,6 +67,9 @@ export default function App() {
      });
 
      socket.on('roomJoined', (data) => {
+         roomIdRef.current = data.roomId;
+         myPlayerIdRef.current = data.playerId;
+         inLobbyRef.current = false;
          setRoomId(data.roomId);
          setMyPlayerId(data.playerId);
          setGameType(data.gameType);
@@ -133,6 +157,11 @@ export default function App() {
   };
 
   const handleLeaveRoom = useCallback(() => {
+      // Clear refs first so reconnect handler doesn't try to rejoin
+      roomIdRef.current = '';
+      myPlayerIdRef.current = null;
+      inLobbyRef.current = true;
+
       if (socket) {
           socket.emit('leaveRoom', { roomId, playerId: myPlayerId });
           socket.disconnect();
