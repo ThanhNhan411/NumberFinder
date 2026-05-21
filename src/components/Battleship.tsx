@@ -1020,16 +1020,16 @@ export default function BattleshipGame({
                                     ))}
                                 </div>
 
-                                {/* Tap hint */}
-                                {turn === myPlayerId && (
-                                    <div className="mt-2 px-1 w-full flex-shrink-0">
-                                        <p className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                {/* Tap hint - fixed height to prevent layout shift */}
+                                <div className="mt-2 px-1 w-full flex-shrink-0 h-[20px] flex items-center justify-center">
+                                    {turn === myPlayerId && (
+                                        <p className={`text-center text-[10px] font-bold uppercase tracking-widest transition-colors duration-150 ${selectedTarget ? 'text-sky-600' : 'text-slate-400'}`}>
                                             {selectedTarget
                                                 ? `🎯 Nhấn lại ô ${cols[selectedTarget.x]}${selectedTarget.y + 1} để bắn`
                                                 : '👆 Nhấn 1 lần để chọn · Nhấn lại để bắn'}
                                         </p>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
 
                             {/* Divider (Desktop Only) */}
@@ -1189,11 +1189,11 @@ function Grid({
                                     gridColumn: cell.x + 1,
                                     gridRow: cell.y + 1
                                 }}
-                                className={`relative w-full h-full rounded transition-all duration-200 border border-sky-200/40
+                                className={`relative w-full h-full rounded transition-colors duration-150 border border-sky-300/30
                                     ${isTargetMode 
                                         ? isTargetSelected
-                                            ? 'bg-sky-300/50 border-sky-500 shadow-inner'
-                                            : 'cursor-crosshair bg-sky-200/20 hover:bg-sky-300/40 border-sky-300/25' 
+                                            ? 'bg-sky-400/40 cursor-crosshair ring-2 ring-sky-500 ring-inset'
+                                            : 'cursor-crosshair bg-sky-200/20 hover:bg-sky-300/35' 
                                         : 'bg-sky-200/25 hover:bg-sky-200/40'
                                     }
                                 `}
