@@ -790,6 +790,7 @@ export default function BattleshipGame({
                                     )}
 
                                     {/* Dock Container */}
+                                    {/* Dock Container */}
                                     <div 
                                         className="flex items-center justify-between gap-2 overflow-x-auto p-2 border border-orange-200 bg-white/70 shadow-sm rounded-xl min-h-[72px]" 
                                         onClick={() => { setSelectedShipInfo(null); setSelectedPlacedShipId(null); }}
@@ -824,15 +825,17 @@ export default function BattleshipGame({
                                                     style={shipStyle}
                                                     className={`transition-all flex-shrink-0 cursor-grab active:cursor-grabbing ${selectedShipInfo?.id === ship.id ? 'scale-105' : 'opacity-80 hover:opacity-100'} ${dragInfo?.ship?.id === ship.id ? 'opacity-30' : ''}`}
                                                 >
+                                                    {/* SỬA LẠI THẺ IMG NÀY */}
                                                     <img 
                                                         src={SHIP_IMAGES[ship.id]} 
                                                         alt="" 
-                                                        className="w-full h-full object-cover pointer-events-none select-none"
+                                                        // LƯU Ý: Đã xóa bỏ class "w-full h-full" của Tailwind để tránh xung đột style
+                                                        className="object-cover pointer-events-none select-none flex-shrink-0"
                                                         style={{
+                                                            width: '32px',                 // Đảo chiều: Chiều rộng ảnh = Chiều cao của khung cha
+                                                            height: `${ship.size * 28}px`, // Đảo chiều: Chiều cao ảnh = Chiều rộng của khung cha
                                                             transform: 'rotate(-90deg)',
                                                             transformOrigin: 'center',
-                                                            width: '100%',
-                                                            height: '100%'
                                                         }}
                                                     />
                                                 </div>
