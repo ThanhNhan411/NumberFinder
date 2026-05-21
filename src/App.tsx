@@ -130,9 +130,29 @@ export default function App() {
       if (status !== 'PLAYING') return;
       if (myPlayerId !== playerId) return; // Only tick your own panel
       if (turn === playerId) return; // Cannot tick when it's your turn to search
-
-      socket.emit('tick', { roomId, playerId, cellId });
   };
+
+  const handleLeaveRoom = useCallback(() => {
+      if (socket) {
+          socket.emit('leaveRoom', { roomId, playerId: myPlayerId });
+          socket.disconnect();
+          socket.connect();
+      }
+      
+      setRoomId('');
+      setJoinCode('');
+      setMyPlayerId(null);
+      setGameType(null);
+      setInLobby(true);
+      setSelectedApp(null);
+      setStatus('SETUP');
+      setWinner(null);
+      setP1Ready(false);
+      setP2Ready(false);
+      setP1Shots([]);
+      setP2Shots([]);
+      setTurnTimeLeft(null);
+  }, [roomId, myPlayerId]);
 
   if (inLobby) {
       if (!selectedApp) {
@@ -172,10 +192,10 @@ export default function App() {
       }
 
       return (
-          <div className={`flex flex-col h-[100dvh] w-screen items-center justify-center ${selectedApp === 'NUMERO_DUO' ? 'bg-orange-50' : 'bg-slate-900'} text-slate-900 font-sans p-4 relative py-10 transition-colors duration-500`}>
+          <div className="flex flex-col h-[100dvh] w-screen items-center justify-center bg-orange-50 text-slate-900 font-sans p-4 relative py-10 transition-colors duration-500">
               <button 
                   onClick={() => setSelectedApp(null)} 
-                  className={`absolute top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-colors ${selectedApp === 'NUMERO_DUO' ? 'bg-white text-slate-600 hover:bg-slate-100 shadow' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+                  className="absolute top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm bg-white text-slate-650 hover:bg-slate-100 shadow border border-orange-200 transition-colors"
               >
                   &larr; Back
               </button>
@@ -188,11 +208,11 @@ export default function App() {
                   )}
               </div>
               
-              <h1 className={`text-4xl sm:text-5xl font-black italic tracking-tighter text-transparent bg-clip-text mb-8 text-center leading-tight ${selectedApp === 'NUMERO_DUO' ? 'bg-gradient-to-br from-sky-500 via-orange-400 to-pink-500' : 'bg-gradient-to-br from-pink-400 to-red-500'}`}>
+              <h1 className={`text-4xl sm:text-5xl font-black italic tracking-tighter text-transparent bg-clip-text mb-8 text-center leading-tight ${selectedApp === 'NUMERO_DUO' ? 'bg-gradient-to-br from-sky-500 via-orange-400 to-pink-500' : 'bg-gradient-to-br from-sky-600 to-pink-650'}`}>
                  {selectedApp === 'NUMERO_DUO' ? 'NUMERO.DUO' : 'SEA.STRIKE'}
               </h1>
               
-              <div className={`flex flex-col w-full max-w-sm gap-6 p-6 rounded-3xl shadow-xl border ${selectedApp === 'NUMERO_DUO' ? 'bg-white border-orange-200' : 'bg-slate-800 border-slate-700'}`}>
+              <div className="flex flex-col w-full max-w-sm gap-6 p-6 rounded-[2rem] shadow-xl border bg-white border-orange-200">
                   
                   <button 
                       onPointerDown={() => socket.emit('createRoom', selectedApp)}
@@ -200,8 +220,8 @@ export default function App() {
                   >
                       Create Game
                   </button>
-                  <div className={`w-full h-px relative ${selectedApp === 'NUMERO_DUO' ? 'bg-slate-200' : 'bg-slate-700'}`}>
-                      <span className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 px-2 text-xs font-bold uppercase ${selectedApp === 'NUMERO_DUO' ? 'bg-white text-slate-400' : 'bg-slate-800 text-slate-500'}`}>OR</span>
+                  <div className="w-full h-px relative bg-slate-200">
+                      <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 px-2 text-xs font-bold uppercase bg-white text-slate-400">OR</span>
                   </div>
                   <div className="flex gap-2">
                       <input 
@@ -209,7 +229,7 @@ export default function App() {
                           value={joinCode}
                           onChange={e => setJoinCode(e.target.value.toUpperCase())}
                           placeholder="Room Code"
-                          className={`flex-1 px-4 py-3 border rounded-xl font-bold tracking-widest text-center uppercase focus:outline-none focus:ring-2 w-0 ${selectedApp === 'NUMERO_DUO' ? 'bg-slate-50 border-slate-200 text-slate-700 focus:border-pink-400 focus:ring-pink-400/20' : 'bg-slate-900 border-slate-700 text-white focus:border-sky-400 focus:ring-sky-400/20 placeholder:text-slate-600'}`}
+                          className="flex-1 px-4 py-3 border rounded-xl font-bold tracking-widest text-center uppercase focus:outline-none focus:ring-2 w-0 bg-slate-50 border-slate-200 text-slate-700 focus:border-pink-400 focus:ring-pink-400/20 placeholder:text-slate-400"
                           maxLength={4}
                       />
                       <button 
@@ -243,6 +263,7 @@ export default function App() {
               p1Shots={p1Shots}
               p2Shots={p2Shots}
               turnTimeLeft={turnTimeLeft}
+              onLeaveRoom={handleLeaveRoom}
           />
       );
   }
@@ -252,59 +273,71 @@ export default function App() {
 
       {/* SETUP / WIN Overlay */}
       {((status === 'SETUP' || status === 'WAITING' || status === 'GAME_OVER') && myPlayerId === 'P1') && (
-         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-orange-50/95 backdrop-blur-xl transition-all">
-            <img src="/favicon.svg" alt="Numero Duo Icon" className="w-32 h-32 md:w-40 md:h-40 mb-6 drop-shadow-xl animate-bounce" style={{ animationDuration: '3s' }} />
-            <div className="mb-8 p-4 bg-white rounded-2xl border border-orange-200 shadow-lg text-center">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Room Code</p>
-                <p className="text-4xl font-black text-slate-800 tracking-[0.2em]">{roomId}</p>
-            </div>
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-orange-50/95 backdrop-blur-xl transition-all">
+             <button 
+                 onClick={handleLeaveRoom}
+                 className="absolute top-6 left-6 flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 border border-orange-200 text-slate-600 rounded-full font-bold text-sm transition-colors shadow"
+             >
+                 &larr; Exit
+             </button>
+             <img src="/favicon.svg" alt="Numero Duo Icon" className="w-32 h-32 md:w-40 md:h-40 mb-6 drop-shadow-xl animate-bounce" style={{ animationDuration: '3s' }} />
+             <div className="mb-8 p-4 bg-white rounded-2xl border border-orange-200 shadow-lg text-center">
+                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Room Code</p>
+                 <p className="text-4xl font-black text-slate-800 tracking-[0.2em]">{roomId}</p>
+             </div>
 
-            {status === 'GAME_OVER' && (
-                <div className="flex flex-col items-center mb-12">
-                   <div className="text-sm font-semibold text-slate-500 tracking-[0.2em] uppercase mb-2">Match Result</div>
-                   <div className={`text-4xl md:text-5xl font-black uppercase tracking-wider animate-pulse drop-shadow-[0_0_15px_rgba(0,0,0,0.1)] ${winner === 'P1' ? 'text-sky-500' : 'text-pink-500'}`}>
-                      {winner === 'P1' ? 'P1 WINS!' : 'P2 WINS!'}
-                   </div>
-                </div>
-            )}
+             {status === 'GAME_OVER' && (
+                 <div className="flex flex-col items-center mb-12">
+                    <div className="text-sm font-semibold text-slate-500 tracking-[0.2em] uppercase mb-2">Match Result</div>
+                    <div className={`text-4xl md:text-5xl font-black uppercase tracking-wider animate-pulse drop-shadow-[0_0_15px_rgba(0,0,0,0.1)] ${winner === 'P1' ? 'text-sky-500' : 'text-pink-500'}`}>
+                       {winner === 'P1' ? 'P1 WINS!' : 'P2 WINS!'}
+                    </div>
+                 </div>
+             )}
 
-            {status === 'WAITING' ? (
-                <div className="flex items-center gap-3 bg-slate-100 px-6 py-4 rounded-full border border-slate-200 shadow-inner">
-                    <div className="w-3 h-3 rounded-full bg-pink-500 animate-ping"></div>
-                    <span className="text-sm font-bold text-slate-600 uppercase tracking-widest">Waiting for Opponent...</span>
-                </div>
-            ) : (
-                <button
-                    onPointerDown={startGame}
-                    className="px-10 py-4 bg-slate-900 text-white rounded-full text-xl font-bold uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all outline-none hover:bg-slate-800"
-                >
-                    {status === 'SETUP' ? 'START MATCH' : 'PLAY AGAIN'}
-                </button>
-            )}
-         </div>
+             {status === 'WAITING' ? (
+                 <div className="flex items-center gap-3 bg-slate-100 px-6 py-4 rounded-full border border-slate-200 shadow-inner">
+                     <div className="w-3 h-3 rounded-full bg-pink-500 animate-ping"></div>
+                     <span className="text-sm font-bold text-slate-600 uppercase tracking-widest">Waiting for Opponent...</span>
+                 </div>
+             ) : (
+                 <button
+                     onPointerDown={startGame}
+                     className="px-10 py-4 bg-slate-900 text-white rounded-full text-xl font-bold uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all outline-none hover:bg-slate-800"
+                 >
+                     {status === 'SETUP' ? 'START MATCH' : 'PLAY AGAIN'}
+                 </button>
+             )}
+          </div>
       )}
 
       {/* Opponent Waiting Overlay for P2 */}
       {((status === 'SETUP' || status === 'WAITING' || status === 'GAME_OVER') && myPlayerId === 'P2') && (
-         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-orange-50/95 backdrop-blur-xl transition-all">
-            <img src="/favicon.svg" alt="Numero Duo Icon" className="w-32 h-32 md:w-40 md:h-40 mb-6 drop-shadow-xl animate-bounce" style={{ animationDuration: '3s' }} />
-            
-            {status === 'GAME_OVER' && (
-                <div className="flex flex-col items-center mb-12">
-                   <div className="text-sm font-semibold text-slate-500 tracking-[0.2em] uppercase mb-2">Match Result</div>
-                   <div className={`text-4xl md:text-5xl font-black uppercase tracking-wider animate-pulse drop-shadow-[0_0_15px_rgba(0,0,0,0.1)] ${winner === 'P1' ? 'text-sky-500' : 'text-pink-500'}`}>
-                      {winner === 'P1' ? 'P1 WINS!' : 'P2 WINS!'}
-                   </div>
-                </div>
-            )}
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-orange-50/95 backdrop-blur-xl transition-all">
+             <button 
+                 onClick={handleLeaveRoom}
+                 className="absolute top-6 left-6 flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 border border-orange-200 text-slate-600 rounded-full font-bold text-sm transition-colors shadow"
+             >
+                 &larr; Exit
+             </button>
+             <img src="/favicon.svg" alt="Numero Duo Icon" className="w-32 h-32 md:w-40 md:h-40 mb-6 drop-shadow-xl animate-bounce" style={{ animationDuration: '3s' }} />
+             
+             {status === 'GAME_OVER' && (
+                 <div className="flex flex-col items-center mb-12">
+                    <div className="text-sm font-semibold text-slate-500 tracking-[0.2em] uppercase mb-2">Match Result</div>
+                    <div className={`text-4xl md:text-5xl font-black uppercase tracking-wider animate-pulse drop-shadow-[0_0_15px_rgba(0,0,0,0.1)] ${winner === 'P1' ? 'text-sky-500' : 'text-pink-500'}`}>
+                       {winner === 'P1' ? 'P1 WINS!' : 'P2 WINS!'}
+                    </div>
+                 </div>
+             )}
 
-            <div className="flex items-center gap-3 bg-slate-100 px-6 py-4 rounded-full border border-slate-200 shadow-inner">
-                <div className="w-3 h-3 rounded-full bg-sky-500 animate-ping"></div>
-                <span className="text-sm font-bold text-slate-600 uppercase tracking-widest">
-                    {status === 'GAME_OVER' ? 'Waiting for Host to Restart...' : 'Waiting for Host to Start...'}
-                </span>
-            </div>
-         </div>
+             <div className="flex items-center gap-3 bg-slate-100 px-6 py-4 rounded-full border border-slate-200 shadow-inner">
+                 <div className="w-3 h-3 rounded-full bg-sky-500 animate-ping"></div>
+                 <span className="text-sm font-bold text-slate-600 uppercase tracking-widest">
+                     {status === 'GAME_OVER' ? 'Waiting for Host to Restart...' : 'Waiting for Host to Start...'}
+                 </span>
+             </div>
+          </div>
       )}
 
       {/* Top Area (Opponent) */}
@@ -349,6 +382,16 @@ export default function App() {
             onStart={() => handleStart(myPlayerId || 'P1')}
          />
       </div>
+
+      {/* Floating Exit Button during active gameplay */}
+      {status === 'PLAYING' && (
+         <button 
+             onClick={handleLeaveRoom}
+             className="absolute top-4 left-4 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-white/80 hover:bg-white text-slate-650 border border-orange-200 rounded-full font-bold text-xs tracking-wider transition-colors shadow-sm"
+         >
+             &larr; Exit
+         </button>
+      )}
 
     </div>
   );

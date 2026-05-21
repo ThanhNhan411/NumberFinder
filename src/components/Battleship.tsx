@@ -28,7 +28,7 @@ const adjustColorBrightness = (hex: string, percent: number) => {
 export default function BattleshipGame({ 
     socket, roomId, myPlayerId, status, turn, winner, 
     p1Board, p2Board, p1Ready, p2Ready, p1Shots, p2Shots,
-    turnTimeLeft
+    turnTimeLeft, onLeaveRoom
 }: any) {
     const isP1 = myPlayerId === 'P1';
     
@@ -696,7 +696,7 @@ export default function BattleshipGame({
     const myFleet = getMyFleetStatus();
 
     return (
-        <div className="flex flex-col h-[100dvh] w-screen bg-slate-950 text-slate-100 font-sans select-none overflow-hidden relative">
+        <div className="flex flex-col h-[100dvh] w-screen bg-orange-50 text-slate-800 font-sans select-none overflow-hidden relative">
             
             {/* Toast announcement */}
             {toast && (
@@ -704,31 +704,41 @@ export default function BattleshipGame({
                     ${toast.includes('LƯỢT CỦA BẠN') || toast.includes('LƯỢT CỦA BẠN!') || toast.includes('BẮN TÀU') || toast.includes('BẮN TRÚNG')
                         ? 'bg-sky-600 border-sky-500 text-white shadow-sky-500/40 shadow-[0_0_15px_rgba(56,189,248,0.3)]' 
                         : toast.includes('ĐỐI THỦ') 
-                            ? 'bg-slate-850 border-slate-750 text-slate-300 shadow-slate-900/40' 
-                            : 'bg-red-600 border-red-500 text-white shadow-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.3)]'
+                            ? 'bg-white border-orange-200 text-slate-700 shadow-orange-100/40' 
+                            : 'bg-red-650 border-red-500 text-white shadow-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.3)]'
                     }
                 `}>
                     {toast}
                 </div>
             )}
 
-            <div className="flex flex-col items-center justify-center p-4 h-full relative max-w-lg md:max-w-4xl mx-auto w-full">
-                
-                <h1 className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-pink-500 mb-2">SEA STRIKE</h1>
+            {/* Header bar */}
+            <div className="w-full max-w-lg md:max-w-4xl mx-auto flex items-center justify-between px-4 pt-4 pb-0 flex-shrink-0 relative z-40">
+                <button 
+                    onClick={onLeaveRoom}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-orange-50 text-slate-655 border border-orange-200 rounded-full font-bold text-xs tracking-wider transition-colors shadow-sm"
+                >
+                    &larr; Exit
+                </button>
+                <h1 className="text-2xl sm:text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-pink-650">SEA STRIKE</h1>
+                <div className="w-[68px] sm:w-[74px]" /> {/* Spacer to balance the back button */}
+            </div>
+
+            <div className="flex flex-col items-center justify-center p-4 pt-1 h-full relative max-w-lg md:max-w-4xl mx-auto w-full overflow-hidden">
 
                 {(status === 'WAITING' || status === 'SETUP') && (
                     <div className="flex flex-col items-center flex-1 justify-center">
-                        <div className="p-6 bg-slate-800/80 rounded-2xl border border-slate-700 text-center mb-4 shadow-xl backdrop-blur-sm">
+                        <div className="p-6 bg-white/80 rounded-2xl border border-orange-200 text-center mb-4 shadow-xl backdrop-blur-sm">
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Room Code</p>
-                            <p className="text-4xl font-black text-white tracking-[0.2em]">{roomId}</p>
+                            <p className="text-4xl font-black text-slate-800 tracking-[0.2em]">{roomId}</p>
                         </div>
                         {status === 'WAITING' ? (
-                           <div className="flex items-center gap-3 bg-slate-800 px-6 py-4 rounded-full border border-slate-700 shadow-lg">
+                           <div className="flex items-center gap-3 bg-white px-6 py-4 rounded-full border border-orange-200 shadow-lg">
                                <div className="w-3 h-3 rounded-full bg-sky-500 animate-ping"></div>
-                               <span className="text-sm font-bold text-slate-300 uppercase tracking-widest">Waiting for Opponent...</span>
+                               <span className="text-sm font-bold text-slate-600 uppercase tracking-widest">Waiting for Opponent...</span>
                            </div>
                         ) : (
-                           <button onPointerDown={() => socket.emit("startGame", roomId)} className="px-10 py-4 bg-sky-500 text-white rounded-full text-xl font-bold uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(14,165,233,0.4)] active:scale-95 transition-all outline-none">
+                           <button onPointerDown={() => socket.emit("startGame", roomId)} className="px-10 py-4 bg-sky-500 text-white rounded-full text-xl font-bold uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(14,165,233,0.4)] active:scale-95 transition-all outline-none hover:bg-sky-600">
                                ENTER FLEET
                            </button>
                         )}
@@ -738,12 +748,12 @@ export default function BattleshipGame({
                 {status === 'READY' && (
                     <div className="flex flex-col items-center w-full max-w-sm flex-1 justify-center">
                         <div className="mb-2 text-center">
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mr-2">Room Code:</span>
-                            <span className="text-xl font-black text-white tracking-[0.2em]">{roomId}</span>
+                            <span className="text-xs font-bold text-slate-550 uppercase tracking-widest mr-2">Room Code:</span>
+                            <span className="text-xl font-black text-slate-800 tracking-[0.2em]">{roomId}</span>
                         </div>
                         {!myReady ? (
                             <>
-                                <h2 className="text-md font-bold text-slate-300 mb-1 uppercase tracking-widest">Deploy Your Fleet</h2>
+                                <h2 className="text-md font-bold text-slate-700 mb-1 uppercase tracking-widest">Deploy Your Fleet</h2>
                                 <div className="text-[10px] text-slate-500 mb-3 h-4 text-center">
                                     {selectedShipInfo || selectedPlacedShipId ? 'Tap empty cell to place/move, buttons to rotate/remove' : 'Drag ships or tap one to select and place'}
                                 </div>
@@ -774,21 +784,21 @@ export default function BattleshipGame({
                                 <div className="flex flex-col gap-2.5 w-full mt-4 max-w-[340px]">
                                     {/* Action Bar for Selection */}
                                     {(selectedShipInfo || selectedPlacedShipId) && (
-                                        <div className="flex items-center justify-between gap-3 px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl animate-fade-in shadow-inner">
-                                            <span className="text-[11px] font-mono font-bold text-sky-400 uppercase tracking-wider">
+                                        <div className="flex items-center justify-between gap-3 px-3 py-2 bg-orange-100/60 border border-orange-200 rounded-xl animate-fade-in shadow-inner">
+                                            <span className="text-[11px] font-mono font-bold text-sky-600 uppercase tracking-wider">
                                                 Locked: {SHIP_NAMES[selectedShipInfo?.id || selectedPlacedShipId]?.split(' ')[0]}
                                             </span>
                                             <div className="flex gap-2">
                                                 <button 
                                                     onClick={handleRotateSelected}
-                                                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-sky-300 border border-slate-700 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all"
+                                                    className="px-2.5 py-1 bg-white hover:bg-orange-50 text-sky-655 border border-orange-200 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all"
                                                 >
                                                     Rotate
                                                 </button>
                                                 {selectedPlacedShipId && (
                                                     <button 
                                                         onClick={handleRemoveSelected}
-                                                        className="px-2.5 py-1 bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-900/40 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all"
+                                                        className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-650 border border-red-200 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all"
                                                     >
                                                         Remove
                                                     </button>
@@ -799,7 +809,7 @@ export default function BattleshipGame({
 
                                     {/* Dock Container */}
                                     <div 
-                                        className="flex items-center justify-between gap-2 overflow-x-auto p-2 border border-slate-800 bg-slate-900/50 rounded-xl min-h-[72px]" 
+                                        className="flex items-center justify-between gap-2 overflow-x-auto p-2 border border-orange-200 bg-white/70 shadow-sm rounded-xl min-h-[72px]" 
                                         onClick={() => { setSelectedShipInfo(null); setSelectedPlacedShipId(null); }}
                                     >
                                         {shipsToPlace.map(ship => {
@@ -845,18 +855,18 @@ export default function BattleshipGame({
 
                                     {/* Action Buttons */}
                                     <div className="flex gap-2">
-                                        <button onClick={undoPlacement} disabled={placedShips.length === 0} className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700/50 rounded-xl font-bold text-xs tracking-widest disabled:opacity-40 disabled:hover:bg-slate-800 transition-colors">UNDO</button>
-                                        <button onClick={placeRandomShips} className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700/50 rounded-xl font-bold text-xs tracking-widest text-sky-400 transition-colors">RANDOM</button>
-                                        <button onClick={commitBoard} disabled={placedShips.length < 5} className="flex-1 py-2.5 bg-sky-500 hover:bg-sky-400 disabled:bg-slate-800 disabled:border-slate-800 disabled:text-slate-600 rounded-xl font-bold text-xs tracking-widest disabled:opacity-40 text-white transition-all">READY</button>
+                                        <button onClick={undoPlacement} disabled={placedShips.length === 0} className="flex-1 py-2.5 bg-white hover:bg-orange-50 border border-orange-200 text-slate-700 rounded-xl font-bold text-xs tracking-widest disabled:opacity-40 disabled:hover:bg-white transition-colors shadow-sm">UNDO</button>
+                                        <button onClick={placeRandomShips} className="flex-1 py-2.5 bg-white hover:bg-orange-50 border border-orange-200 text-sky-600 rounded-xl font-bold text-xs tracking-widest transition-colors shadow-sm">RANDOM</button>
+                                        <button onClick={commitBoard} disabled={placedShips.length < 5} className="flex-1 py-2.5 bg-sky-500 hover:bg-sky-600 disabled:bg-slate-200 disabled:border-slate-250 disabled:text-slate-400 rounded-xl font-bold text-xs tracking-widest disabled:opacity-50 text-white transition-all shadow-md">READY</button>
                                     </div>
                                 </div>
                             </>
                         ) : (
                             <div className="flex-1 flex flex-col items-center justify-center">
-                                <div className="flex items-center gap-3 bg-slate-900 px-6 py-4 rounded-full border border-slate-800 shadow-xl">
+                                <div className="flex items-center gap-3 bg-white px-6 py-4 rounded-full border border-orange-200 shadow-lg">
                                    <div className="w-3 h-3 rounded-full bg-pink-500 animate-ping"></div>
-                                   <span className="text-sm font-bold text-slate-400 uppercase tracking-widest text-center">Fleet Deployed<br/><span className="text-xs text-slate-600">Waiting for enemy...</span></span>
-                               </div>
+                                   <span className="text-sm font-bold text-slate-600 uppercase tracking-widest text-center">Fleet Deployed<br/><span className="text-xs text-slate-500">Waiting for enemy...</span></span>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -867,24 +877,24 @@ export default function BattleshipGame({
                         
                         {/* Turn Status & Timer Banner */}
                         <div className="mb-3 px-2 w-full flex-shrink-0">
-                            <div className={`w-full p-3 rounded-2xl border transition-all duration-300 flex items-center justify-between shadow-md
+                            <div className={`w-full p-3 rounded-2xl border transition-all duration-300 flex items-center justify-between shadow-sm
                                 ${turn === myPlayerId 
-                                    ? 'bg-sky-950/30 border-sky-500/30 shadow-[0_0_15px_rgba(56,189,248,0.05)]' 
-                                    : 'bg-slate-900/30 border-slate-800'
+                                    ? 'bg-sky-50 border-sky-200' 
+                                    : 'bg-white border-orange-100'
                                 }`
                             }>
                                 <div className="flex items-center gap-2.5">
                                     <div className="w-2.5 h-2.5 rounded-full relative flex items-center justify-center">
                                         <div className={`absolute w-full h-full rounded-full animate-ping opacity-75 
-                                            ${turn === myPlayerId ? 'bg-sky-400' : 'bg-rose-500'}`} 
+                                            ${turn === myPlayerId ? 'bg-sky-500' : 'bg-rose-500'}`} 
                                         />
                                         <div className={`w-2.5 h-2.5 rounded-full relative 
-                                            ${turn === myPlayerId ? 'bg-sky-400' : 'bg-rose-500'}`} 
+                                            ${turn === myPlayerId ? 'bg-sky-500' : 'bg-rose-500'}`} 
                                         />
                                     </div>
                                     <div className="flex flex-col">
                                         <span className={`text-xs font-black tracking-widest uppercase
-                                            ${turn === myPlayerId ? 'text-sky-400' : 'text-slate-400'}`}>
+                                            ${turn === myPlayerId ? 'text-sky-655' : 'text-slate-500'}`}>
                                             {turn === myPlayerId ? 'Lượt của bạn' : 'Lượt đối thủ'}
                                         </span>
                                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
@@ -896,10 +906,10 @@ export default function BattleshipGame({
                                 {turnTimeLeft !== undefined && turnTimeLeft !== null && (
                                     <div className="flex flex-col items-end">
                                         <span className={`font-mono text-sm font-black tracking-tighter leading-none
-                                            ${turnTimeLeft <= 15 ? 'text-rose-500 animate-pulse font-extrabold text-base' : 'text-slate-200'}`}>
+                                            ${turnTimeLeft <= 15 ? 'text-rose-600 animate-pulse font-extrabold text-base' : 'text-slate-700'}`}>
                                             ⏱️ {turnTimeLeft}s
                                         </span>
-                                        <div className="w-16 h-1 bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+                                        <div className="w-16 h-1 bg-slate-200 rounded-full mt-1.5 overflow-hidden">
                                             <div 
                                                 className={`h-full transition-all duration-1000 rounded-full
                                                     ${turnTimeLeft <= 15 ? 'bg-rose-500 animate-pulse' : turnTimeLeft <= 40 ? 'bg-amber-400' : 'bg-sky-400'}`}
@@ -917,15 +927,15 @@ export default function BattleshipGame({
                                 onClick={() => setActiveTab('attack')}
                                 className={`flex-1 py-2.5 rounded-xl font-bold text-xs tracking-widest transition-all border flex items-center justify-center gap-1.5
                                     ${activeTab === 'attack'
-                                        ? 'bg-sky-600/20 border-sky-500 text-sky-400 font-extrabold shadow-[0_0_8px_rgba(56,189,248,0.2)]'
-                                        : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-400'
+                                        ? 'bg-sky-50 border-sky-400 text-sky-600 font-extrabold shadow-sm'
+                                        : 'bg-white border-orange-100 text-slate-500 shadow-sm'
                                     }`}
                             >
                                 <span className="relative flex h-2 w-2">
                                     {turn === myPlayerId && (
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-500 opacity-75"></span>
                                     )}
-                                    <span className={`relative inline-flex rounded-full h-2 w-2 ${turn === myPlayerId ? 'bg-sky-400' : 'bg-slate-750'}`}></span>
+                                    <span className={`relative inline-flex rounded-full h-2 w-2 ${turn === myPlayerId ? 'bg-sky-500' : 'bg-slate-300'}`}></span>
                                 </span>
                                 LƯỚI TẤN CÔNG
                             </button>
@@ -933,15 +943,15 @@ export default function BattleshipGame({
                                 onClick={() => setActiveTab('defense')}
                                 className={`flex-1 py-2.5 rounded-xl font-bold text-xs tracking-widest transition-all border flex items-center justify-center gap-1.5
                                     ${activeTab === 'defense'
-                                        ? 'bg-rose-600/20 border-rose-500 text-rose-400 font-extrabold shadow-[0_0_8px_rgba(244,63,94,0.2)]'
-                                        : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-400'
+                                        ? 'bg-rose-50 border-rose-400 text-rose-650 font-extrabold shadow-sm'
+                                        : 'bg-white border-orange-100 text-slate-500 shadow-sm'
                                     }`}
                             >
                                 <span className="relative flex h-2 w-2">
                                     {turn !== myPlayerId && (
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"></span>
                                     )}
-                                    <span className={`relative inline-flex rounded-full h-2 w-2 ${turn !== myPlayerId ? 'bg-rose-400' : 'bg-slate-750'}`}></span>
+                                    <span className={`relative inline-flex rounded-full h-2 w-2 ${turn !== myPlayerId ? 'bg-rose-500' : 'bg-slate-300'}`}></span>
                                 </span>
                                 ĐỘI TÀU CỦA BẠN
                             </button>
@@ -953,16 +963,16 @@ export default function BattleshipGame({
                             {/* Opponent's Board (Left Column) */}
                             <div className={`flex-1 flex flex-col w-full max-w-sm ${activeTab === 'attack' ? 'block' : 'hidden md:flex'}`}>
                                 <div className="flex justify-between items-center mb-1.5 px-1">
-                                    <span className={`text-xs font-bold uppercase tracking-widest ${turn === myPlayerId ? 'text-sky-400 animate-pulse' : 'text-slate-500'}`}>
+                                    <span className={`text-xs font-bold uppercase tracking-widest ${turn === myPlayerId ? 'text-sky-600 animate-pulse' : 'text-slate-500'}`}>
                                         Enemy Waters {turn === myPlayerId && '- YOUR TURN'}
                                     </span>
                                     {turn === myPlayerId && selectedTarget && (
-                                        <span className="text-[10px] font-mono text-sky-400 font-bold bg-sky-950/40 px-1.5 py-0.5 border border-sky-900/50 rounded">
+                                        <span className="text-[10px] font-mono text-sky-655 font-bold bg-sky-50 px-1.5 py-0.5 border border-sky-200 rounded shadow-sm">
                                             TARGET: {cols[selectedTarget.x]}{selectedTarget.y + 1}
                                         </span>
                                     )}
                                 </div>
-                                <div className={`transition-opacity w-full ${turn !== myPlayerId ? 'opacity-40 pointer-events-none' : ''}`}>
+                                <div className={`transition-opacity w-full ${turn !== myPlayerId ? 'opacity-50 pointer-events-none' : ''}`}>
                                     <Grid 
                                         size={10} 
                                         gridRef={gridRef}
@@ -976,16 +986,16 @@ export default function BattleshipGame({
                                 </div>
                                 
                                 {/* Opponent Fleet Radar (Status Bars) */}
-                                <div className="flex justify-center items-center gap-1 mt-2.5 px-1.5 py-1.5 bg-slate-900/40 border border-slate-900 rounded-lg w-full flex-shrink-0">
+                                <div className="flex justify-center items-center gap-1 mt-2.5 px-1.5 py-1.5 bg-white/70 border border-orange-200 rounded-lg w-full flex-shrink-0 shadow-sm">
                                     {opponentFleet.map((ship) => (
                                         <div 
                                             key={ship.id} 
                                             className={`flex flex-col items-center p-1 rounded border text-center transition-all flex-1 ${
                                                 ship.isSunk 
-                                                    ? 'bg-red-950/10 border-red-900/30 text-red-500/40 line-through opacity-50' 
+                                                    ? 'bg-red-50 border-red-100 text-red-550/40 line-through opacity-50' 
                                                     : ship.hitCount > 0
-                                                        ? 'bg-amber-950/15 border-amber-600/30 text-amber-300'
-                                                        : 'bg-slate-900/30 border-slate-800/60 text-slate-500'
+                                                        ? 'bg-amber-50 border-amber-200 text-amber-700'
+                                                        : 'bg-white border-orange-105 text-slate-500'
                                             }`}
                                         >
                                             <span className="text-[8px] font-mono font-bold uppercase tracking-wider mb-0.5">{ship.name}</span>
@@ -999,8 +1009,8 @@ export default function BattleshipGame({
                                                                 ship.isSunk 
                                                                     ? 'bg-red-500' 
                                                                     : isHit 
-                                                                        ? 'bg-amber-400' 
-                                                                        : 'bg-slate-700'
+                                                                        ? 'bg-amber-550' 
+                                                                        : 'bg-slate-300'
                                                             }`} 
                                                         />
                                                     );
@@ -1013,17 +1023,17 @@ export default function BattleshipGame({
                                 {/* Fire Control System Console */}
                                 {turn === myPlayerId && (
                                     <div className="mt-2.5 flex items-center gap-2.5 w-full flex-shrink-0">
-                                        <div className="flex-1 font-mono text-[10px] text-slate-500 bg-slate-950/80 p-2 border border-slate-900 rounded-lg h-[38px] flex items-center">
+                                        <div className="flex-1 font-mono text-[10px] text-slate-600 bg-white border border-orange-200 shadow-sm p-2 rounded-lg h-[38px] flex items-center">
                                             {selectedTarget ? (
-                                                <span className="text-sky-400 animate-pulse text-[9.5px]">LOCKED ON {cols[selectedTarget.x]}{selectedTarget.y + 1}. READY TO FIRE.</span>
+                                                <span className="text-sky-655 animate-pulse text-[9.5px]">LOCKED ON {cols[selectedTarget.x]}{selectedTarget.y + 1}. READY TO FIRE.</span>
                                             ) : (
-                                                <span className="text-slate-600 uppercase tracking-wider text-[9.5px]">Acquire target coordinates...</span>
+                                                <span className="text-slate-400 uppercase tracking-wider text-[9.5px]">Acquire target coordinates...</span>
                                             )}
                                         </div>
                                         <button
                                             onClick={handleFire}
                                             disabled={!selectedTarget}
-                                            className="px-5 py-2 bg-red-600 hover:bg-red-500 disabled:bg-slate-900 disabled:text-slate-700 disabled:border-slate-900 text-white rounded-lg font-bold tracking-widest text-xs transition-all border border-red-500 shadow-[0_0_12px_rgba(239,68,68,0.2)] active:scale-95 disabled:active:scale-100 flex-shrink-0 h-[38px]"
+                                            className="px-5 py-2 bg-red-550 hover:bg-red-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:border-slate-250 text-white rounded-lg font-bold tracking-widest text-xs transition-all shadow active:scale-95 disabled:active:scale-100 flex-shrink-0 h-[38px]"
                                         >
                                             FIRE!
                                         </button>
@@ -1032,9 +1042,9 @@ export default function BattleshipGame({
                             </div>
 
                             {/* Divider (Desktop Only) */}
-                            <div className="hidden md:flex w-px bg-slate-900 mx-1 relative self-stretch items-center justify-center">
-                                <div className="absolute top-1/2 -translate-y-1/2 -left-2 w-4 h-4 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-slate-700"></div>
+                            <div className="hidden md:flex w-px bg-orange-200 mx-1 relative self-stretch items-center justify-center">
+                                <div className="absolute top-1/2 -translate-y-1/2 -left-2 w-4 h-4 rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-orange-400"></div>
                                 </div>
                             </div>
 
@@ -1056,7 +1066,7 @@ export default function BattleshipGame({
                                 </div>
 
                                 {/* My Fleet Status pegs */}
-                                <div className="flex justify-center items-center gap-1 mt-2.5 px-1.5 py-1.5 bg-slate-900/20 border border-slate-900/50 rounded-lg w-full flex-shrink-0">
+                                <div className="flex justify-center items-center gap-1 mt-2.5 px-1.5 py-1.5 bg-white/70 border border-orange-200 rounded-lg w-full flex-shrink-0 shadow-sm">
                                     {myFleet.map((ship) => (
                                         <div 
                                             key={ship.id} 
@@ -1077,8 +1087,8 @@ export default function BattleshipGame({
                                                                 ship.isSunk 
                                                                     ? 'bg-red-500' 
                                                                     : isHit 
-                                                                        ? 'bg-red-400' 
-                                                                        : 'bg-slate-700'
+                                                                        ? 'bg-red-550' 
+                                                                        : 'bg-slate-300'
                                                             }`} 
                                                         />
                                                     );
@@ -1094,13 +1104,19 @@ export default function BattleshipGame({
                 )}
 
                 {status === 'GAME_OVER' && (
-                    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-sm pb-20">
+                    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-orange-50/95 backdrop-blur-sm pb-20">
+                        <button 
+                            onClick={onLeaveRoom}
+                            className="absolute top-6 left-6 flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 border border-orange-200 text-slate-600 rounded-full font-bold text-sm transition-colors shadow"
+                        >
+                            &larr; Exit
+                        </button>
                         <div className="text-sm font-semibold text-slate-400 tracking-[0.2em] uppercase mb-4">Battle Result</div>
-                        <div className={`text-5xl font-black uppercase tracking-widest mb-10 text-center animate-pulse ${winner === myPlayerId ? 'text-sky-400 drop-shadow-[0_0_20px_rgba(56,189,248,0.5)]' : 'text-pink-500 drop-shadow-[0_0_20px_rgba(236,72,153,0.5)]'}`}>
+                        <div className={`text-5xl font-black uppercase tracking-widest mb-10 text-center animate-pulse ${winner === myPlayerId ? 'text-sky-600 drop-shadow-[0_0_15px_rgba(56,189,248,0.2)]' : 'text-pink-600 drop-shadow-[0_0_15px_rgba(236,72,153,0.2)]'}`}>
                             {winner === myPlayerId ? 'VICTORY' : 'DEFEAT'}
                         </div>
                         {myPlayerId === 'P1' && (
-                           <button onPointerDown={() => socket.emit("startGame", roomId)} className="px-10 py-4 bg-white text-slate-900 rounded-full text-xl font-bold uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all outline-none">
+                           <button onPointerDown={() => socket.emit("startGame", roomId)} className="px-10 py-4 bg-sky-500 text-white rounded-full text-xl font-bold uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all hover:bg-sky-600 outline-none">
                                PLAY AGAIN
                            </button>
                         )}
@@ -1150,7 +1166,7 @@ function Grid({
                 {/* Grid Container */}
                 <div 
                    ref={gridRef}
-                   className={`grid flex-1 aspect-square bg-slate-900 border-[2px] border-slate-800 shadow-2xl p-1 relative rounded-lg ${shrink ? 'gap-[2px]' : 'gap-1'}`} 
+                   className={`grid flex-1 aspect-square bg-sky-100 border-[2px] border-sky-200 shadow-lg p-1 relative rounded-lg ${shrink ? 'gap-[2px]' : 'gap-1'}`} 
                    style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${size}, minmax(0, 1fr))` }}
                    onDragOver={(e) => e.preventDefault()}
                    onDrop={(e) => onDropGrid && onDropGrid(e)}
@@ -1182,18 +1198,18 @@ function Grid({
                                     gridColumn: cell.x + 1,
                                     gridRow: cell.y + 1
                                 }}
-                                className={`relative w-full h-full rounded transition-all duration-200 border border-slate-950/20
+                                className={`relative w-full h-full rounded transition-all duration-200 border border-sky-200/40
                                     ${isTargetMode 
                                         ? isTargetSelected
-                                            ? 'bg-sky-950/40 border-sky-500/50 shadow-[0_0_8px_rgba(56,189,248,0.3)]'
-                                            : 'cursor-crosshair bg-sky-950/15 hover:bg-sky-900/25 border-sky-950/40' 
-                                        : 'bg-slate-950/30'
+                                            ? 'bg-sky-300/50 border-sky-500 shadow-inner'
+                                            : 'cursor-crosshair bg-sky-200/20 hover:bg-sky-300/40 border-sky-300/25' 
+                                        : 'bg-sky-200/25 hover:bg-sky-200/40'
                                     }
                                 `}
                             >
                                 {/* Center coordinates dot */}
                                 {cellStatus === 'empty' && (
-                                    <div className="absolute inset-0 m-auto w-[2px] h-[2px] rounded-full bg-slate-700/60 pointer-events-none" />
+                                    <div className="absolute inset-0 m-auto w-[2px] h-[2px] rounded-full bg-sky-400/50 pointer-events-none" />
                                 )}
 
                                 {/* Cannonball Water Splash Animation for Misses */}
