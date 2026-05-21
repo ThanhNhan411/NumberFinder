@@ -877,7 +877,7 @@ export default function BattleshipGame({
                         
                         {/* Turn Status & Timer Banner */}
                         <div className="mb-3 px-2 w-full flex-shrink-0">
-                            <div className={`w-full p-3 rounded-2xl border transition-all duration-300 flex items-center justify-between shadow-sm
+                            <div className={`w-full p-3 rounded-2xl border transition-colors duration-300 flex items-center justify-between shadow-sm
                                 ${turn === myPlayerId 
                                     ? 'bg-sky-50 border-sky-200' 
                                     : 'bg-white border-orange-100'
@@ -904,9 +904,9 @@ export default function BattleshipGame({
                                 </div>
                                 
                                 {turnTimeLeft !== undefined && turnTimeLeft !== null && (
-                                    <div className="flex flex-col items-end">
+                                    <div className="flex flex-col items-end flex-shrink-0">
                                         <span className={`font-mono text-sm font-black tracking-tighter leading-none
-                                            ${turnTimeLeft <= 15 ? 'text-rose-600 animate-pulse font-extrabold text-base' : 'text-slate-700'}`}>
+                                            ${turnTimeLeft <= 15 ? 'text-rose-600 animate-pulse' : 'text-slate-700'}`}>
                                             ⏱️ {turnTimeLeft}s
                                         </span>
                                         <div className="w-16 h-1 bg-slate-200 rounded-full mt-1.5 overflow-hidden">
