@@ -172,3 +172,76 @@ body {
 .animate-particle-4 { animation: particle-fly-4 0.7s ease-out forwards; }
 .animate-particle-5 { animation: particle-fly-5 0.7s ease-out forwards; }
 .animate-particle-6 { animation: particle-fly-6 0.7s ease-out forwards; }
+
+/* Water surface animations and classes */
+@keyframes water-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes wave-float {
+  0%, 100% {
+    transform: translateY(0) scaleY(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(-2px) scaleY(1.03);
+    opacity: 0.85;
+  }
+}
+
+.water-grid-bg {
+  background: linear-gradient(
+    135deg,
+    #bae6fd 0%,   /* sky-200 */
+    #e0f2fe 25%,  /* sky-100 */
+    #7dd3fc 50%,  /* sky-300 */
+    #e0f2fe 75%,  /* sky-100 */
+    #bae6fd 100%  /* sky-200 */
+  );
+  background-size: 400% 400%;
+  animation: water-shimmer 25s ease infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Light shimmer sparkles mimicking sun reflection on waves */
+.water-sparkles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: 
+    radial-gradient(circle at 15% 25%, rgba(255, 255, 255, 0.4) 0%, transparent 6%),
+    radial-gradient(circle at 75% 35%, rgba(255, 255, 255, 0.35) 0%, transparent 8%),
+    radial-gradient(circle at 35% 75%, rgba(255, 255, 255, 0.3) 0%, transparent 7%),
+    radial-gradient(circle at 85% 80%, rgba(255, 255, 255, 0.25) 0%, transparent 6%),
+    radial-gradient(circle at 50% 15%, rgba(255, 255, 255, 0.3) 0%, transparent 5%);
+  background-size: 100% 100%;
+  opacity: 0.8;
+  mix-blend-mode: overlay;
+  animation: water-shimmer 15s ease infinite alternate;
+}
+
+/* Rolling wave crest patterns */
+.water-waves {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 12px,
+    rgba(255, 255, 255, 0.12) 14px,
+    transparent 16px,
+    transparent 28px
+  );
+  opacity: 0.7;
+  animation: wave-float 7s ease-in-out infinite;
+}

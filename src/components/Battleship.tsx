@@ -16,6 +16,14 @@ const SHIP_NAMES: Record<string, string> = {
     'S5': 'Destroyer (2)'
 };
 
+const SHIP_IMAGES: Record<string, string> = {
+    'S1': '/ships/carrier.png',
+    'S2': '/ships/battleship.png',
+    'S3': '/ships/cruiser.png',
+    'S4': '/ships/submarine.png',
+    'S5': '/ships/destroyer.png'
+};
+
 const adjustColorBrightness = (hex: string, percent: number) => {
     let num = parseInt(hex.replace("#", ""), 16),
         amt = Math.round(2.55 * percent),
@@ -815,11 +823,18 @@ export default function BattleshipGame({
                                         {shipsToPlace.map(ship => {
                                             const isSelected = selectedShipInfo?.id === ship.id;
                                             const shipStyle: React.CSSProperties = {
-                                                background: `linear-gradient(to right, ${ship.color}, ${adjustColorBrightness(ship.color, -30)})`,
-                                                border: isSelected ? '2px solid #38bdf8' : `1px solid ${adjustColorBrightness(ship.color, 25)}`,
-                                                borderRadius: '10px 3px 3px 10px',
-                                                boxShadow: isSelected ? '0 0 10px rgba(56, 189, 248, 0.7)' : '0 2px 4px rgba(0,0,0,0.3)',
-                                                touchAction: 'none'
+                                                position: 'relative',
+                                                width: `${ship.size * 28}px`,
+                                                height: '32px',
+                                                background: isSelected ? 'rgba(56, 189, 248, 0.12)' : 'rgba(255, 255, 255, 0.4)',
+                                                border: isSelected ? '2px solid #38bdf8' : '1px solid #e2e8f0',
+                                                borderRadius: '6px',
+                                                boxShadow: isSelected ? '0 0 8px rgba(56, 189, 248, 0.4)' : '0 1px 3px rgba(0,0,0,0.05)',
+                                                touchAction: 'none',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                overflow: 'hidden'
                                             };
 
                                             return (
@@ -833,20 +848,25 @@ export default function BattleshipGame({
                                                     onTouchEnd={handleTouchEnd}
                                                     onClick={(e) => { e.stopPropagation(); setSelectedShipInfo({ ...ship, isVertical: false }); setSelectedPlacedShipId(null); }}
                                                     style={shipStyle}
-                                                    className={`flex gap-0.5 p-1 rounded cursor-grab active:cursor-grabbing transition-all flex-shrink-0 items-center justify-center ${selectedShipInfo?.id === ship.id ? 'scale-105' : 'opacity-70 hover:opacity-100'} ${dragInfo?.ship?.id === ship.id ? 'opacity-30' : ''}`}
+                                                    className={`transition-all flex-shrink-0 cursor-grab active:cursor-grabbing ${selectedShipInfo?.id === ship.id ? 'scale-105' : 'opacity-80 hover:opacity-100'} ${dragInfo?.ship?.id === ship.id ? 'opacity-30' : ''}`}
                                                 >
-                                                    {Array.from({length: ship.size}).map((_,i) => {
-                                                        const isMiddle = i === Math.floor(ship.size / 2);
-                                                        return (
-                                                            <div key={i} className="w-3 h-3 flex items-center justify-center">
-                                                                {isMiddle ? (
-                                                                    <div className="w-2 h-1 rounded bg-black/40 border border-white/10" />
-                                                                ) : (
-                                                                    <div className="w-0.5 h-0.5 rounded-full bg-black/30" />
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
+                                                    <div className="w-full h-full relative pointer-events-none">
+                                                        <img 
+                                                            src={SHIP_IMAGES[ship.id]} 
+                                                            alt="" 
+                                                            style={{
+                                                                position: 'absolute',
+                                                                top: 0,
+                                                                left: 0,
+                                                                width: `${100 / ship.size}%`,
+                                                                height: `${ship.size * 100}%`,
+                                                                transform: 'rotate(90deg) translateY(-100%)',
+                                                                transformOrigin: '0 0',
+                                                                objectFit: 'contain'
+                                                            }}
+                                                            className="pointer-events-none select-none"
+                                                        />
+                                                    </div>
                                                 </div>
                                             );
                                         })}
@@ -1156,12 +1176,16 @@ function Grid({
                 {/* Grid Container */}
                 <div 
                    ref={gridRef}
-                   className={`grid flex-1 aspect-square bg-sky-100 border-[2px] border-sky-200 shadow-lg p-1 relative rounded-lg ${shrink ? 'gap-[2px]' : 'gap-1'}`} 
+                   className={`grid flex-1 aspect-square water-grid-bg border-[2px] border-sky-200 shadow-lg p-1 relative rounded-lg ${shrink ? 'gap-[2px]' : 'gap-1'}`} 
                    style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${size}, minmax(0, 1fr))` }}
                    onDragOver={(e) => e.preventDefault()}
                    onDrop={(e) => onDropGrid && onDropGrid(e)}
                    onDragLeave={onDragLeaveGrid}
                 >
+                    {/* Water Shimmer & Wave Overlays */}
+                    <div className="absolute inset-0 water-sparkles pointer-events-none rounded-lg" />
+                    <div className="absolute inset-0 water-waves pointer-events-none rounded-lg" />
+
                     {/* Background Grid Cells */}
                     {cells.map((cell) => {
                         let cellStatus = 'empty';
@@ -1251,27 +1275,35 @@ function Grid({
                         const shipStyle: React.CSSProperties = {
                             gridColumn: `${ship.x + 1} / span ${ship.isVertical ? 1 : ship.size}`,
                             gridRow: `${ship.y + 1} / span ${ship.isVertical ? ship.size : 1}`,
-                            background: isSunk
-                                ? (ship.isVertical
-                                    ? 'linear-gradient(to bottom, #475569, #334155)'
-                                    : 'linear-gradient(to right, #475569, #334155)')
-                                : (ship.isVertical 
-                                    ? `linear-gradient(to bottom, ${ship.color}, ${adjustColorBrightness(ship.color, -25)})`
-                                    : `linear-gradient(to right, ${ship.color}, ${adjustColorBrightness(ship.color, -25)})`),
+                            position: 'relative',
                             border: isSelected 
                                 ? '2px solid #38bdf8' 
-                                : isSunk
-                                    ? '1px solid #475569'
-                                    : `1px solid ${adjustColorBrightness(ship.color, 25)}`,
+                                : 'none',
                             boxShadow: isSelected 
-                                ? '0 0 10px rgba(56, 189, 248, 0.8), inset 0 1px 2px rgba(255,255,255,0.4)' 
-                                : isSunk
-                                    ? '0 1px 2px rgba(0,0,0,0.4)'
-                                    : '0 3px 5px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.25)',
-                            borderRadius: ship.isVertical ? '12px 12px 3px 3px' : '12px 3px 3px 12px',
+                                ? '0 0 10px rgba(56, 189, 248, 0.8)' 
+                                : 'none',
+                            borderRadius: '4px',
                             touchAction: 'none',
                             opacity: isHovered ? 0.15 : isSunk ? 0.65 : 0.95, // Dim original ship to a shadow position during drag to maintain DOM stability, make sunk ships semi-transparent
-                            zIndex: 20
+                            zIndex: 20,
+                            overflow: 'hidden',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        };
+
+                        const imgStyle: React.CSSProperties = ship.isVertical ? {
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'fill',
+                            filter: isSunk ? 'grayscale(100%) brightness(60%) contrast(110%)' : 'none'
+                        } : {
+                            width: `${ship.size * 100}%`,
+                            height: `${100 / ship.size}%`,
+                            transform: 'rotate(90deg) translateY(-100%)',
+                            transformOrigin: '0 0',
+                            objectFit: 'fill',
+                            filter: isSunk ? 'grayscale(100%) brightness(60%) contrast(110%)' : 'none'
                         };
 
                         return (
@@ -1285,27 +1317,14 @@ function Grid({
                                 onTouchEnd={onTouchEndShip}
                                 onClick={(e) => { e.stopPropagation(); !isSunk && onShipTap && onShipTap(ship); }}
                                 style={shipStyle}
-                                className={`flex items-center justify-center relative select-none
-                                    ${onDragStartShip && !isSunk ? 'cursor-grab active:cursor-grabbing hover:brightness-105' : ''}
-                                `}
+                                className={`select-none ${onDragStartShip && !isSunk ? 'cursor-grab active:cursor-grabbing hover:brightness-105' : ''}`}
                             >
-                                {/* Ship deck details */}
-                                <div className={`flex w-full h-full items-center justify-around p-1 ${ship.isVertical ? 'flex-col py-1.5' : 'flex-row px-1.5'}`}>
-                                    {Array.from({ length: ship.size }).map((_, i) => {
-                                        const isMiddle = i === Math.floor(ship.size / 2);
-                                        return (
-                                            <div key={i} className="flex items-center justify-center">
-                                                {isMiddle ? (
-                                                    <div className={`rounded bg-black/40 border border-white/10 flex items-center justify-center ${ship.isVertical ? 'w-2 h-3' : 'w-3 h-2'}`}>
-                                                        <div className={`w-0.5 h-0.5 rounded-full ${isSunk ? 'bg-slate-500' : 'bg-sky-400 animate-pulse'}`} />
-                                                    </div>
-                                                ) : (
-                                                    <div className="w-1 h-1 rounded-full bg-black/35 border border-white/5" />
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                <img 
+                                    src={SHIP_IMAGES[ship.id]} 
+                                    alt="" 
+                                    style={imgStyle}
+                                    className="pointer-events-none select-none"
+                                />
                             </div>
                         );
                     })}
@@ -1317,39 +1336,44 @@ function Grid({
                             const shipStyle: React.CSSProperties = {
                                 gridColumn: `${hoverState.hx + 1} / span ${ship.isVertical ? 1 : ship.size}`,
                                 gridRow: `${hoverState.hy + 1} / span ${ship.isVertical ? ship.size : 1}`,
-                                background: ship.isVertical 
-                                    ? `linear-gradient(to bottom, ${ship.color}, ${adjustColorBrightness(ship.color, -25)})`
-                                    : `linear-gradient(to right, ${ship.color}, ${adjustColorBrightness(ship.color, -25)})`,
+                                position: 'relative',
                                 border: hoverState.isValid
                                     ? '2px solid #22c55e' 
                                     : '2px solid #ef4444',
                                 boxShadow: hoverState.isValid
                                     ? '0 0 15px rgba(34, 197, 94, 0.8)'
                                     : '0 0 15px rgba(239, 68, 68, 0.8)',
-                                borderRadius: ship.isVertical ? '12px 12px 3px 3px' : '12px 3px 3px 12px',
+                                borderRadius: '4px',
                                 touchAction: 'none',
                                 opacity: 0.8,
                                 pointerEvents: 'none',
-                                zIndex: 40
+                                zIndex: 40,
+                                overflow: 'hidden',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
                             };
+
+                            const imgStyle: React.CSSProperties = ship.isVertical ? {
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'fill'
+                            } : {
+                                width: `${ship.size * 100}%`,
+                                height: `${100 / ship.size}%`,
+                                transform: 'rotate(90deg) translateY(-100%)',
+                                transformOrigin: '0 0',
+                                objectFit: 'fill'
+                            };
+
                             return (
-                                <div style={shipStyle} className="flex items-center justify-center select-none pointer-events-none">
-                                    <div className={`flex w-full h-full items-center justify-around p-1 ${ship.isVertical ? 'flex-col py-1.5' : 'flex-row px-1.5'}`}>
-                                        {Array.from({ length: ship.size }).map((_, i) => {
-                                            const isMiddle = i === Math.floor(ship.size / 2);
-                                            return (
-                                                <div key={i} className="flex items-center justify-center">
-                                                    {isMiddle ? (
-                                                        <div className={`rounded bg-black/40 border border-white/10 flex items-center justify-center ${ship.isVertical ? 'w-2 h-3' : 'w-3 h-2'}`}>
-                                                            <div className="w-0.5 h-0.5 rounded-full bg-sky-400 animate-pulse" />
-                                                        </div>
-                                                    ) : (
-                                                        <div className="w-1 h-1 rounded-full bg-black/35 border border-white/5" />
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                                <div style={shipStyle} className="select-none pointer-events-none">
+                                    <img 
+                                        src={SHIP_IMAGES[ship.id]} 
+                                        alt="" 
+                                        style={imgStyle}
+                                        className="pointer-events-none select-none"
+                                    />
                                 </div>
                             );
                         })()
