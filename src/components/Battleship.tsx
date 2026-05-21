@@ -1237,37 +1237,50 @@ function Grid({
                         const isHovered = hoverState && hoverState.shipId === ship.id;
                         const isSelected = selectedPlacedShipId === ship.id;
                         
+                        // Check if ship is sunk on my board using oppShots
+                        const isSunk = ship.cells && ship.cells.every((cell: any) => 
+                            oppShots && oppShots.some((s: any) => s.x === cell.x && s.y === cell.y && s.hit)
+                        );
+                        
                         const shipStyle: React.CSSProperties = {
                             gridColumn: `${ship.x + 1} / span ${ship.isVertical ? 1 : ship.size}`,
                             gridRow: `${ship.y + 1} / span ${ship.isVertical ? ship.size : 1}`,
-                            background: ship.isVertical 
-                                ? `linear-gradient(to bottom, ${ship.color}, ${adjustColorBrightness(ship.color, -25)})`
-                                : `linear-gradient(to right, ${ship.color}, ${adjustColorBrightness(ship.color, -25)})`,
+                            background: isSunk
+                                ? (ship.isVertical
+                                    ? 'linear-gradient(to bottom, #475569, #334155)'
+                                    : 'linear-gradient(to right, #475569, #334155)')
+                                : (ship.isVertical 
+                                    ? `linear-gradient(to bottom, ${ship.color}, ${adjustColorBrightness(ship.color, -25)})`
+                                    : `linear-gradient(to right, ${ship.color}, ${adjustColorBrightness(ship.color, -25)})`),
                             border: isSelected 
                                 ? '2px solid #38bdf8' 
-                                : `1px solid ${adjustColorBrightness(ship.color, 25)}`,
+                                : isSunk
+                                    ? '1px solid #475569'
+                                    : `1px solid ${adjustColorBrightness(ship.color, 25)}`,
                             boxShadow: isSelected 
                                 ? '0 0 10px rgba(56, 189, 248, 0.8), inset 0 1px 2px rgba(255,255,255,0.4)' 
-                                : '0 3px 5px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.25)',
+                                : isSunk
+                                    ? '0 1px 2px rgba(0,0,0,0.4)'
+                                    : '0 3px 5px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.25)',
                             borderRadius: ship.isVertical ? '12px 12px 3px 3px' : '12px 3px 3px 12px',
                             touchAction: 'none',
-                            opacity: isHovered ? 0.15 : 0.95, // Dim original ship to a shadow position during drag to maintain DOM stability
+                            opacity: isHovered ? 0.15 : isSunk ? 0.65 : 0.95, // Dim original ship to a shadow position during drag to maintain DOM stability, make sunk ships semi-transparent
                             zIndex: 20
                         };
 
                         return (
                             <div 
                                 key={ship.id}
-                                draggable={!!onDragStartShip}
+                                draggable={!!onDragStartShip && !isSunk}
                                 onDragStart={(e) => onDragStartShip && onDragStartShip(e, ship)}
                                 onDragEnd={(e) => onDragEndShip && onDragEndShip(e)}
                                 onTouchStart={(e) => onTouchStartShip && onTouchStartShip(e, ship, 'board')}
                                 onTouchMove={onTouchMoveShip}
                                 onTouchEnd={onTouchEndShip}
-                                onClick={(e) => { e.stopPropagation(); onShipTap && onShipTap(ship); }}
+                                onClick={(e) => { e.stopPropagation(); !isSunk && onShipTap && onShipTap(ship); }}
                                 style={shipStyle}
                                 className={`flex items-center justify-center relative select-none
-                                    ${onDragStartShip ? 'cursor-grab active:cursor-grabbing hover:brightness-105' : ''}
+                                    ${onDragStartShip && !isSunk ? 'cursor-grab active:cursor-grabbing hover:brightness-105' : ''}
                                 `}
                             >
                                 {/* Ship deck details */}
@@ -1278,7 +1291,7 @@ function Grid({
                                             <div key={i} className="flex items-center justify-center">
                                                 {isMiddle ? (
                                                     <div className={`rounded bg-black/40 border border-white/10 flex items-center justify-center ${ship.isVertical ? 'w-2 h-3' : 'w-3 h-2'}`}>
-                                                        <div className="w-0.5 h-0.5 rounded-full bg-sky-400 animate-pulse" />
+                                                        <div className={`w-0.5 h-0.5 rounded-full ${isSunk ? 'bg-slate-500' : 'bg-sky-400 animate-pulse'}`} />
                                                     </div>
                                                 ) : (
                                                     <div className="w-1 h-1 rounded-full bg-black/35 border border-white/5" />
@@ -1342,7 +1355,7 @@ function Grid({
                             <div 
                                 key={`opp-shot-${shot.x}-${shot.y}`}
                                 style={{ gridColumn: shot.x + 1, gridRow: shot.y + 1 }}
-                                className="w-full h-full flex items-center justify-center pointer-events-none z-30 overflow-hidden"
+                                className="relative w-full h-full flex items-center justify-center pointer-events-none z-30 overflow-hidden"
                             >
                                 {shot.hit ? (
                                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
