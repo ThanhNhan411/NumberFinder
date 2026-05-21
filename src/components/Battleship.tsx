@@ -962,15 +962,14 @@ export default function BattleshipGame({
                             
                             {/* Opponent's Board (Left Column) */}
                             <div className={`flex-1 flex flex-col w-full max-w-sm ${activeTab === 'attack' ? 'block' : 'hidden md:flex'}`}>
-                                <div className="flex justify-between items-center mb-1.5 px-1">
+                                <div className="flex justify-between items-center mb-1.5 px-1 h-[22px]">
                                     <span className={`text-xs font-bold uppercase tracking-widest ${turn === myPlayerId ? 'text-sky-600 animate-pulse' : 'text-slate-500'}`}>
                                         Enemy Waters {turn === myPlayerId && '- YOUR TURN'}
                                     </span>
-                                    {turn === myPlayerId && selectedTarget && (
-                                        <span className="text-[10px] font-mono text-sky-655 font-bold bg-sky-50 px-1.5 py-0.5 border border-sky-200 rounded shadow-sm">
-                                            TARGET: {cols[selectedTarget.x]}{selectedTarget.y + 1}
-                                        </span>
-                                    )}
+                                    <span className={`text-[10px] font-mono font-bold bg-sky-50 px-1.5 py-0.5 border border-sky-200 rounded shadow-sm transition-opacity duration-150
+                                        ${turn === myPlayerId && selectedTarget ? 'text-sky-600 opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                                        {selectedTarget ? `${cols[selectedTarget.x]}${selectedTarget.y + 1}` : '--'}
+                                    </span>
                                 </div>
                                 <div className={`transition-opacity w-full ${turn !== myPlayerId ? 'opacity-50 pointer-events-none' : ''}`}>
                                     <Grid 
