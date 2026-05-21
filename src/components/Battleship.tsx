@@ -1020,23 +1020,14 @@ export default function BattleshipGame({
                                     ))}
                                 </div>
 
-                                {/* Fire Control System Console */}
+                                {/* Tap hint */}
                                 {turn === myPlayerId && (
-                                    <div className="mt-2.5 flex items-center gap-2.5 w-full flex-shrink-0">
-                                        <div className="flex-1 font-mono text-[10px] text-slate-600 bg-white border border-orange-200 shadow-sm p-2 rounded-lg h-[38px] flex items-center">
-                                            {selectedTarget ? (
-                                                <span className="text-sky-655 animate-pulse text-[9.5px]">LOCKED ON {cols[selectedTarget.x]}{selectedTarget.y + 1}. READY TO FIRE.</span>
-                                            ) : (
-                                                <span className="text-slate-400 uppercase tracking-wider text-[9.5px]">Acquire target coordinates...</span>
-                                            )}
-                                        </div>
-                                        <button
-                                            onClick={handleFire}
-                                            disabled={!selectedTarget}
-                                            className="px-5 py-2 bg-red-550 hover:bg-red-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:border-slate-250 text-white rounded-lg font-bold tracking-widest text-xs transition-all shadow active:scale-95 disabled:active:scale-100 flex-shrink-0 h-[38px]"
-                                        >
-                                            FIRE!
-                                        </button>
+                                    <div className="mt-2 px-1 w-full flex-shrink-0">
+                                        <p className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                            {selectedTarget
+                                                ? `🎯 Nhấn lại ô ${cols[selectedTarget.x]}${selectedTarget.y + 1} để bắn`
+                                                : '👆 Nhấn 1 lần để chọn · Nhấn lại để bắn'}
+                                        </p>
                                     </div>
                                 )}
                             </div>
