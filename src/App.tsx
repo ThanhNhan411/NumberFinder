@@ -152,9 +152,15 @@ export default function App() {
 
   const handleTick = (playerId: 'P1' | 'P2', cellId: number) => {
       if (status !== 'PLAYING') return;
-      if (myPlayerId !== playerId) return; // Only tick your own panel
-      if (turn === playerId) return; // Cannot tick when it's your turn to search
+      if (!myPlayerId) return;
+      if (myPlayerId !== playerId) return; // Only local player's attack panel should send tick events
+      if (turn === playerId) return; // Cannot tick while that player is currently searching
+      socket.emit('tick', { roomId, playerId, cellId });
   };
+
+  const localAttackOnTick = myPlayerId && status === 'PLAYING' && turn !== myPlayerId
+      ? (cellId: number) => handleTick(myPlayerId, cellId)
+      : undefined;
 
   const handleLeaveRoom = useCallback(() => {
       // Clear refs first so reconnect handler doesn't try to rejoin
@@ -378,7 +384,6 @@ export default function App() {
             status={status}
             targetNumber={targetNumber}
             ticks={myPlayerId === 'P1' ? p2Ticks : p1Ticks}
-            onTick={(cellId) => handleTick(myPlayerId === 'P1' ? 'P2' : 'P1', cellId)}
             onStart={() => handleStart(myPlayerId === 'P1' ? 'P2' : 'P1')}
          />
       </div>
@@ -407,7 +412,7 @@ export default function App() {
             status={status}
             targetNumber={targetNumber}
             ticks={myPlayerId === 'P1' ? p1Ticks : p2Ticks}
-            onTick={(cellId) => handleTick(myPlayerId || 'P1', cellId)}
+            onTick={localAttackOnTick}
             onStart={() => handleStart(myPlayerId || 'P1')}
          />
       </div>

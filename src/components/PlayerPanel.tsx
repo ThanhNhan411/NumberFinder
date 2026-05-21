@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface PlayerPanelProps {
   playerId: 'P1' | 'P2';
@@ -7,7 +7,7 @@ interface PlayerPanelProps {
   status: 'SETUP' | 'READY' | 'PLAYING' | 'GAME_OVER';
   targetNumber: number | null;
   ticks: Set<number>;
-  onTick: (id: number) => void;
+  onTick?: (id: number) => void;
   onStart: () => void;
 }
 
@@ -22,7 +22,56 @@ export default function PlayerPanel({
     const bgTheme = playerId === 'P1' ? 'bg-sky-400' : 'bg-pink-400';
     const shadowTheme = playerId === 'P1' ? 'shadow-[0_0_10px_rgba(56,189,248,0.4)]' : 'shadow-[0_0_10px_rgba(244,114,182,0.4)]';
 
-    const [dragTarget, setDragTarget] = useState<{ id: number, startX: number } | null>(null);
+    const [dragTarget, setDragTarget] = useState<{ id: number, startX: number, pointerId: number } | null>(null);
+    const dragTargetRef = useRef<typeof dragTarget>(null);
+    const dragElementRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        dragTargetRef.current = dragTarget;
+    }, [dragTarget]);
+
+    useEffect(() => {
+        if (!dragTarget) return;
+
+        const handleWindowPointerMove = (e: PointerEvent) => {
+            const target = dragTargetRef.current;
+            if (!target || e.pointerId !== target.pointerId) return;
+            if (!isPlaying) return;
+            if (ticks.has(target.id)) return;
+
+            const deltaX = Math.abs(e.clientX - target.startX);
+            if (deltaX > 20) {
+                onTick(target.id);
+                setDragTarget(null);
+                if (dragElementRef.current) {
+                    try {
+                        dragElementRef.current.releasePointerCapture(target.pointerId);
+                    } catch {}
+                }
+            }
+        };
+
+        const handleWindowPointerUp = (e: PointerEvent) => {
+            const target = dragTargetRef.current;
+            if (!target || e.pointerId !== target.pointerId) return;
+            setDragTarget(null);
+            if (dragElementRef.current) {
+                try {
+                    dragElementRef.current.releasePointerCapture(target.pointerId);
+                } catch {}
+            }
+        };
+
+        window.addEventListener('pointermove', handleWindowPointerMove);
+        window.addEventListener('pointerup', handleWindowPointerUp);
+        window.addEventListener('pointercancel', handleWindowPointerUp);
+
+        return () => {
+            window.removeEventListener('pointermove', handleWindowPointerMove);
+            window.removeEventListener('pointerup', handleWindowPointerUp);
+            window.removeEventListener('pointercancel', handleWindowPointerUp);
+        };
+    }, [dragTarget, isPlaying, onTick, ticks]);
 
     return (
         <div className="w-full h-full flex flex-col items-center justify-center gap-2 select-none container mx-auto p-1 sm:p-2 min-h-0">
@@ -68,43 +117,51 @@ export default function PlayerPanel({
                                      {Array.from({length: 100}).map((_, i) => {
                                          const ticked = ticks.has(i);
                                          const isDraggingThis = dragTarget?.id === i;
+                                         const canTick = !ticked && isPlaying && !!onTick;
                                          return (
                                              <div
                                                 key={i}
                                                 onPointerDown={(e) => {
                                                     e.preventDefault();
-                                                    if (!ticked && isPlaying) {
-                                                        setDragTarget({ id: i, startX: e.clientX });
+                                                    if (canTick) {
+                                                        setDragTarget({ id: i, startX: e.clientX, pointerId: e.pointerId });
+                                                        dragElementRef.current = e.currentTarget as HTMLDivElement;
                                                         e.currentTarget.setPointerCapture(e.pointerId);
                                                     }
                                                 }}
                                                 onPointerMove={(e) => {
                                                     e.preventDefault();
-                                                    if (dragTarget?.id === i && isPlaying && !ticked) {
+                                                    if (dragTarget?.id === i && canTick) {
                                                         const deltaX = Math.abs(e.clientX - dragTarget.startX);
                                                         if (deltaX > 20) {
-                                                            onTick(i);
+                                                            onTick?.(i);
                                                             setDragTarget(null);
-                                                            e.currentTarget.releasePointerCapture(e.pointerId);
+                                                            try {
+                                                                e.currentTarget.releasePointerCapture(e.pointerId);
+                                                            } catch {}
                                                         }
                                                     }
                                                 }}
                                                 onPointerUp={(e) => {
                                                     if (dragTarget?.id === i) {
                                                         setDragTarget(null);
-                                                        e.currentTarget.releasePointerCapture(e.pointerId);
+                                                        try {
+                                                            e.currentTarget.releasePointerCapture(e.pointerId);
+                                                        } catch {}
                                                     }
                                                 }}
                                                 onPointerCancel={(e) => {
                                                     if (dragTarget?.id === i) {
                                                         setDragTarget(null);
-                                                        e.currentTarget.releasePointerCapture(e.pointerId);
+                                                        try {
+                                                            e.currentTarget.releasePointerCapture(e.pointerId);
+                                                        } catch {}
                                                     }
                                                 }}
                                                 className={`
-                                                    rounded-[2px] cursor-grab active:cursor-grabbing touch-none w-full h-full overflow-hidden relative transition-all duration-75
+                                                    rounded-[2px] ${canTick ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'} touch-none w-full h-full overflow-hidden relative transition-all duration-75
                                                     ${!ticked 
-                                                        ? `${bgTheme} ${shadowTheme} ${isDraggingThis ? 'brightness-110 scale-[0.85]' : 'hover:brightness-105 opacity-90'}` 
+                                                        ? `${bgTheme} ${shadowTheme} ${isDraggingThis ? 'brightness-110 scale-[0.85]' : canTick ? 'hover:brightness-105 opacity-90' : 'opacity-80'}` 
                                                         : 'bg-slate-100 border border-slate-200'
                                                     }
                                                 `}
