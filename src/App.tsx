@@ -38,6 +38,7 @@ export default function App() {
   const [p1Shots, setP1Shots] = useState<any[]>([]);
   const [p2Shots, setP2Shots] = useState<any[]>([]);
   const [turnTimeLeft, setTurnTimeLeft] = useState<number | null>(null);
+  const [battleshipMode, setBattleshipMode] = useState<'NORMAL' | 'HARD'>('NORMAL');
 
   useEffect(() => {
      socket = io(window.location.origin, {
@@ -93,6 +94,7 @@ export default function App() {
          setP1Shots(state.p1Shots || []);
          setP2Shots(state.p2Shots || []);
          setTurnTimeLeft(state.turnTimeLeft !== undefined ? state.turnTimeLeft : null);
+         setBattleshipMode(state.battleshipMode === 'HARD' ? 'HARD' : 'NORMAL');
      });
 
      socket.on('battleshipTimer', (data) => {
@@ -187,6 +189,7 @@ export default function App() {
       setP1Shots([]);
       setP2Shots([]);
       setTurnTimeLeft(null);
+      setBattleshipMode('NORMAL');
   }, [roomId, myPlayerId]);
 
   if (inLobby) {
@@ -298,6 +301,7 @@ export default function App() {
               p1Shots={p1Shots}
               p2Shots={p2Shots}
               turnTimeLeft={turnTimeLeft}
+              battleshipMode={battleshipMode}
               onLeaveRoom={handleLeaveRoom}
           />
       );

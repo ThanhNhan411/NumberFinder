@@ -1,12 +1,25 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 
-const SHIP_TYPES = [
+type BattleshipMode = 'NORMAL' | 'HARD';
+
+const BOARD_CONFIGS: Record<BattleshipMode, { size: number; label: string }> = {
+    NORMAL: { size: 10, label: 'Normal 10x10' },
+    HARD: { size: 12, label: 'Hard 12x12' },
+};
+
+const NORMAL_SHIP_TYPES = [
     { id: 'S1', size: 5, color: '#fca5a5' }, // Red (Carrier)
     { id: 'S2', size: 4, color: '#fcd34d' }, // Yellow (Battleship)
     { id: 'S3', size: 3, color: '#86efac' }, // Green (Cruiser)
     { id: 'S4', size: 3, color: '#93c5fd' }, // Blue (Submarine)
     { id: 'S5', size: 2, color: '#d8b4fe' }, // Purple (Destroyer)
 ];
+
+const HARD_SHIP_TYPES = NORMAL_SHIP_TYPES.map((ship) =>
+    ship.id === 'S4' ? { ...ship, size: 2 } : ship
+);
+
+const getShipTypes = (mode: BattleshipMode) => mode === 'HARD' ? HARD_SHIP_TYPES : NORMAL_SHIP_TYPES;
 
 const SHIP_NAMES: Record<string, string> = {
     'S1': 'Carrier (5)',
@@ -15,6 +28,11 @@ const SHIP_NAMES: Record<string, string> = {
     'S4': 'Submarine (3)',
     'S5': 'Destroyer (2)'
 };
+
+const getShipNames = (mode: BattleshipMode): Record<string, string> => ({
+    ...SHIP_NAMES,
+    'S4': `Submarine (${mode === 'HARD' ? 2 : 3})`,
+});
 
 const SHIP_IMAGES: Record<string, string> = {
     'S1': '/ships/carrier.png',
@@ -27,12 +45,16 @@ const SHIP_IMAGES: Record<string, string> = {
 export default function BattleshipGame({ 
     socket, roomId, myPlayerId, status, turn, winner, 
     p1Board, p2Board, p1Ready, p2Ready, p1Shots, p2Shots,
-    turnTimeLeft, onLeaveRoom
+    turnTimeLeft, battleshipMode = 'NORMAL', onLeaveRoom
 }: any) {
     const isP1 = myPlayerId === 'P1';
+    const currentMode: BattleshipMode = battleshipMode === 'HARD' ? 'HARD' : 'NORMAL';
+    const boardSize = BOARD_CONFIGS[currentMode].size;
+    const shipTypes = useMemo(() => getShipTypes(currentMode), [currentMode]);
+    const shipNames = useMemo(() => getShipNames(currentMode), [currentMode]);
     
     // Trạng thái chuẩn bị xếp thuyền
-    const [shipsToPlace, setShipsToPlace] = useState(SHIP_TYPES);
+    const [shipsToPlace, setShipsToPlace] = useState(shipTypes);
     const [placedShips, setPlacedShips] = useState<any[]>([]);
     const [selectedShipInfo, setSelectedShipInfo] = useState<any | null>(null);
     const [selectedPlacedShipId, setSelectedPlacedShipId] = useState<string | null>(null);
@@ -60,7 +82,7 @@ export default function BattleshipGame({
 
     // Hàm dọn dẹp dữ liệu cũ khi game được reset về trạng thái xếp tàu
     const resetLocalGameStates = () => {
-        setShipsToPlace(SHIP_TYPES);
+        setShipsToPlace(shipTypes);
         setPlacedShips([]);
         setSelectedShipInfo(null);
         setSelectedPlacedShipId(null);
@@ -75,6 +97,12 @@ export default function BattleshipGame({
         const overlay = document.getElementById('gameover-overlay');
         if (overlay) overlay.style.display = 'flex';
     };
+
+    useEffect(() => {
+        if (status === 'WAITING' || status === 'SETUP' || status === 'READY') {
+            resetLocalGameStates();
+        }
+    }, [currentMode]);
 
     // Lắng nghe sự kiện reset/chơi lại từ server phát về cho cả phòng
     useEffect(() => {
@@ -254,7 +282,7 @@ export default function BattleshipGame({
         const newlySunk = currentSunk.filter(id => !sunkShips.includes(id));
         if (newlySunk.length > 0) {
             setSunkShips(currentSunk);
-            const name = SHIP_NAMES[newlySunk[0]].split(' ')[0];
+            const name = shipNames[newlySunk[0]].split(' ')[0];
             setToast(`ENEMY ${name.toUpperCase()} SUNK!`);
             setTimeout(() => setToast(null), 2000);
         }
@@ -276,7 +304,7 @@ export default function BattleshipGame({
             const newlySunk = currentSunk.filter(id => !mySunkShips.includes(id));
             if (newlySunk.length > 0) {
                 setMySunkShips(currentSunk);
-                const name = SHIP_NAMES[newlySunk[0]].split(' ')[0];
+                const name = shipNames[newlySunk[0]].split(' ')[0];
                 setToast(`YOUR ${name.toUpperCase()} SUNK!`);
                 setTimeout(() => setToast(null), 2000);
             }
@@ -288,8 +316,8 @@ export default function BattleshipGame({
         if (status === 'READY') {
             if (selectedShipInfo) {
                 const { id, size, isVertical, color } = selectedShipInfo;
-                if (isVertical && y + size > 10) return;
-                if (!isVertical && x + size > 10) return;
+                if (isVertical && y + size > boardSize) return;
+                if (!isVertical && x + size > boardSize) return;
                 const cells = [];
                 for(let i=0; i<size; i++) cells.push({ x: isVertical ? x : x + i, y: isVertical ? y + i : y });
                 if (placedShips.some(ship => ship.cells.some((c: any) => cells.some(cc => cc.x === c.x && cc.y === c.y)))) return;
@@ -301,8 +329,8 @@ export default function BattleshipGame({
                 const ship = placedShips.find(s => s.id === selectedPlacedShipId);
                 if (ship) {
                     const { id, size, isVertical, color } = ship;
-                    if (isVertical && y + size > 10) return;
-                    if (!isVertical && x + size > 10) return;
+                    if (isVertical && y + size > boardSize) return;
+                    if (!isVertical && x + size > boardSize) return;
                     const cells = [];
                     for(let i=0; i<size; i++) cells.push({ x: isVertical ? x : x + i, y: isVertical ? y + i : y });
                     if (placedShips.some(p => p.id !== id && p.cells.some((c: any) => cells.some(cc => cc.x === c.x && cc.y === c.y)))) return;
@@ -396,7 +424,7 @@ export default function BattleshipGame({
             if (e.cancelable) e.preventDefault();
             const gridRect = gridRectRef.current || (gridRef.current ? gridRef.current.getBoundingClientRect() : null); if (!gridRect) return;
             if (touch.clientX >= gridRect.left && touch.clientX <= gridRect.right && touch.clientY >= gridRect.top && touch.clientY <= gridRect.bottom) {
-                setHoverCell({ x: Math.max(0, Math.min(Math.floor((touch.clientX - gridRect.left) / (gridRect.width / 10)), 9)), y: Math.max(0, Math.min(Math.floor((touch.clientY - gridRect.top) / (gridRect.height / 10)), 9)) });
+                setHoverCell({ x: Math.max(0, Math.min(Math.floor((touch.clientX - gridRect.left) / (gridRect.width / boardSize)), boardSize - 1)), y: Math.max(0, Math.min(Math.floor((touch.clientY - gridRect.top) / (gridRect.height / boardSize)), boardSize - 1)) });
             } else setHoverCell(null);
         }
     };
@@ -423,7 +451,7 @@ export default function BattleshipGame({
         if (!dragInfo) return null; const currentX = cx ?? hoverCell?.x; const currentY = cy ?? hoverCell?.y; if (currentX === undefined || currentY === undefined) return null;
         const { ship, offsetIndex } = dragInfo; const startX = ship.isVertical ? currentX : currentX - offsetIndex; const startY = ship.isVertical ? currentY - offsetIndex : currentY;
         const cells = []; for(let i=0; i<ship.size; i++) cells.push({ x: ship.isVertical ? startX : startX + i, y: ship.isVertical ? startY + i : startY });
-        const isOutOfBounds = cells.some(c => c.x < 0 || c.x > 9 || c.y < 0 || c.y > 9);
+        const isOutOfBounds = cells.some(c => c.x < 0 || c.x >= boardSize || c.y < 0 || c.y >= boardSize);
         const hasCollision = placedShips.some((p:any) => p.id !== ship.id && p.cells.some((c: any) => cells.some(cc => cc.x === c.x && cc.y === c.y)));
         return { shipId: ship.id, cells, isValid: !isOutOfBounds && !hasCollision, hx: startX, hy: startY };
     };
@@ -442,7 +470,7 @@ export default function BattleshipGame({
             if (ship) {
                 const newIsVertical = !ship.isVertical; const cells = [];
                 for(let i=0; i<ship.size; i++) cells.push({ x: newIsVertical ? ship.x : ship.x + i, y: newIsVertical ? ship.y + i : ship.y });
-                if (!cells.some(c => c.x < 0 || c.x > 9 || c.y < 0 || c.y > 9) && !placedShips.some((p:any) => p.id !== ship.id && p.cells.some((c: any) => cells.some(cc => cc.x === c.x && cc.y === c.y)))) {
+                if (!cells.some(c => c.x < 0 || c.x >= boardSize || c.y < 0 || c.y >= boardSize) && !placedShips.some((p:any) => p.id !== ship.id && p.cells.some((c: any) => cells.some(cc => cc.x === c.x && cc.y === c.y)))) {
                     setPlacedShips(placedShips.map((p:any) => p.id === ship.id ? { ...p, isVertical: newIsVertical, cells } : p));
                 } else playEffect('miss');
             }
@@ -470,12 +498,12 @@ export default function BattleshipGame({
 
     const placeRandomShips = () => {
         let currentPlaced: any[] = [];
-        for (const ship of [...SHIP_TYPES]) {
+        for (const ship of [...shipTypes]) {
             let placed = false; let attempts = 0;
             while (!placed && attempts < 100) {
                 const isVertical = Math.random() > 0.5;
-                const x = Math.floor(Math.random() * (isVertical ? 10 : 10 - ship.size + 1));
-                const y = Math.floor(Math.random() * (isVertical ? 10 - ship.size + 1 : 10));
+                const x = Math.floor(Math.random() * (isVertical ? boardSize : boardSize - ship.size + 1));
+                const y = Math.floor(Math.random() * (isVertical ? boardSize - ship.size + 1 : boardSize));
                 const cells = [];
                 for(let i=0; i<ship.size; i++) cells.push({ x: isVertical ? x : x + i, y: isVertical ? y + i : y });
                 if (!currentPlaced.some(p => p.cells.some((c: any) => cells.some(cc => cc.x === c.x && cc.y === c.y)))) {
@@ -487,22 +515,26 @@ export default function BattleshipGame({
         setPlacedShips(currentPlaced); setShipsToPlace([]); setSelectedShipInfo(null); setSelectedPlacedShipId(null);
     };
 
-    const commitBoard = () => { if (placedShips.length === 5) socket.emit("battleshipReady", { roomId, playerId: myPlayerId, board: placedShips }); };
+    const handleModeChange = (mode: BattleshipMode) => {
+        socket.emit("setBattleshipMode", { roomId, mode });
+    };
+
+    const commitBoard = () => { if (placedShips.length === shipTypes.length) socket.emit("battleshipReady", { roomId, playerId: myPlayerId, board: placedShips }); };
 
     const getOpponentFleetStatus = () => {
-        if (!oppBoardState) return SHIP_TYPES.map(ship => ({ id: ship.id, size: ship.size, color: ship.color, name: SHIP_NAMES[ship.id].split(' ')[0], isSunk: false }));
+        if (!oppBoardState) return shipTypes.map(ship => ({ id: ship.id, size: ship.size, color: ship.color, name: shipNames[ship.id].split(' ')[0], isSunk: false }));
         return oppBoardState.map((ship: any) => {
             const isSunk = ship.cells.every((cell: any) => myShots.some((s: any) => s.x === cell.x && s.y === cell.y && s.hit));
-            return { id: ship.id, size: ship.size, color: ship.color, name: SHIP_NAMES[ship.id].split(' ')[0], isSunk };
+            return { id: ship.id, size: ship.size, color: ship.color, name: shipNames[ship.id].split(' ')[0], isSunk };
         });
     };
 
     const getMyFleetStatus = () => {
         const board = myBoardState || placedShips;
-        if (!board) return SHIP_TYPES.map(ship => ({ id: ship.id, size: ship.size, color: ship.color, name: SHIP_NAMES[ship.id].split(' ')[0], isSunk: false }));
+        if (!board) return shipTypes.map(ship => ({ id: ship.id, size: ship.size, color: ship.color, name: shipNames[ship.id].split(' ')[0], isSunk: false }));
         return board.map((ship: any) => {
             const isSunk = ship.cells.every((cell: any) => oppShots.some((s: any) => s.x === cell.x && s.y === cell.y && s.hit));
-            return { id: ship.id, size: ship.size, color: ship.color, name: SHIP_NAMES[ship.id].split(' ')[0], isSunk };
+            return { id: ship.id, size: ship.size, color: ship.color, name: shipNames[ship.id].split(' ')[0], isSunk };
         });
     };
 
@@ -549,6 +581,19 @@ export default function BattleshipGame({
                             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mr-2">Room Code:</span>
                             <span className="text-xl font-black text-slate-800 tracking-[0.2em]">{roomId}</span>
                         </div>
+                        {!myReady && !oppReady && (
+                            <div className="flex items-center gap-1.5 mb-3 p-1 bg-white/80 border border-orange-200 rounded-xl shadow-sm">
+                                {(['NORMAL', 'HARD'] as BattleshipMode[]).map((mode) => (
+                                    <button
+                                        key={mode}
+                                        onClick={() => handleModeChange(mode)}
+                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors ${currentMode === mode ? 'bg-sky-500 text-white' : 'text-slate-500 hover:bg-orange-50'}`}
+                                    >
+                                        {BOARD_CONFIGS[mode].label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                         {!myReady ? (
                             <>
                                 <h2 className="text-md font-bold text-slate-700 mb-1 uppercase tracking-widest">Deploy Your Fleet</h2>
@@ -556,12 +601,12 @@ export default function BattleshipGame({
                                     {selectedShipInfo || selectedPlacedShipId ? 'Tap empty cell to place/move' : 'Drag ships or tap one to select'}
                                 </div>
                                 <div className="w-full px-2 max-w-[340px] mx-auto">
-                                    <Grid size={10} gridRef={gridRef} onCellTap={handleGridTap} myShips={placedShips} oppShots={[]} myShots={[]} onDragStartShip={handleDragStartBoard} onDragEndShip={handleDragEnd} onTouchStartShip={handleTouchStartShip} onTouchMoveShip={handleTouchMove} onTouchEndShip={handleTouchEnd} onDragOverCell={handleDragOverCell} onDropGrid={handleDropGrid} onDragLeaveGrid={handleDragLeaveGrid} hoverState={getHoverState()} onShipTap={handleShipTap} selectedPlacedShipId={selectedPlacedShipId} dragInfo={dragInfo} />
+                                    <Grid size={boardSize} gridRef={gridRef} onCellTap={handleGridTap} myShips={placedShips} oppShots={[]} myShots={[]} onDragStartShip={handleDragStartBoard} onDragEndShip={handleDragEnd} onTouchStartShip={handleTouchStartShip} onTouchMoveShip={handleTouchMove} onTouchEndShip={handleTouchEnd} onDragOverCell={handleDragOverCell} onDropGrid={handleDropGrid} onDragLeaveGrid={handleDragLeaveGrid} hoverState={getHoverState()} onShipTap={handleShipTap} selectedPlacedShipId={selectedPlacedShipId} dragInfo={dragInfo} />
                                 </div>
                                 <div className="flex flex-col gap-2.5 w-full mt-4 max-w-[340px]">
                                     {(selectedShipInfo || selectedPlacedShipId) && (
                                         <div className="flex items-center justify-between gap-3 px-3 py-2 bg-orange-100/60 border border-orange-200 rounded-xl shadow-inner">
-                                            <span className="text-[11px] font-mono font-bold text-sky-600 uppercase tracking-wider">Locked: {SHIP_NAMES[selectedShipInfo?.id || selectedPlacedShipId]?.split(' ')[0]}</span>
+                                            <span className="text-[11px] font-mono font-bold text-sky-600 uppercase tracking-wider">Locked: {shipNames[selectedShipInfo?.id || selectedPlacedShipId]?.split(' ')[0]}</span>
                                             <div className="flex gap-2">
                                                 <button onClick={handleRotateSelected} className="px-2.5 py-1 bg-white border border-orange-200 rounded-lg text-[10px] font-bold uppercase">Rotate</button>
                                                 {selectedPlacedShipId && <button onClick={handleRemoveSelected} className="px-2.5 py-1 bg-red-50 border border-red-200 text-red-500 rounded-lg text-[10px] font-bold uppercase">Remove</button>}
@@ -579,7 +624,7 @@ export default function BattleshipGame({
                                     <div className="flex gap-2">
                                         <button onClick={undoPlacement} disabled={placedShips.length === 0} className="flex-1 py-2.5 bg-white border border-orange-200 rounded-xl font-bold text-xs disabled:opacity-40">UNDO</button>
                                         <button onClick={placeRandomShips} className="flex-1 py-2.5 bg-white border border-orange-200 text-sky-600 rounded-xl font-bold text-xs">RANDOM</button>
-                                        <button onClick={commitBoard} disabled={placedShips.length < 5} className="flex-1 py-2.5 bg-sky-500 text-white rounded-xl font-bold text-xs disabled:bg-slate-200 disabled:text-slate-400">READY</button>
+                                        <button onClick={commitBoard} disabled={placedShips.length < shipTypes.length} className="flex-1 py-2.5 bg-sky-500 text-white rounded-xl font-bold text-xs disabled:bg-slate-200 disabled:text-slate-400">READY</button>
                                     </div>
                                 </div>
                             </>
@@ -643,7 +688,7 @@ export default function BattleshipGame({
                                 </div>
                                 <div className={`transition-opacity w-full ${(status === 'PLAYING' && localTurn !== myPlayerId) || isAnimating ? 'opacity-70 pointer-events-none' : ''}`}>
                                     <Grid 
-                                        size={10} 
+                                        size={boardSize}
                                         gridRef={gridRef}
                                         onCellTap={handleGridTap} 
                                         myShips={[]} 
@@ -678,7 +723,7 @@ export default function BattleshipGame({
                             <div className={`flex-1 flex flex-col w-full max-w-sm ${activeTab === 'defense' ? 'block' : 'hidden md:flex'}`}>
                                 <div className="flex justify-between items-center mb-1.5 px-1"><span className="text-xs font-bold uppercase tracking-widest text-slate-500">Đội tàu bảo vệ</span></div>
                                 <div className="w-full">
-                                    <Grid size={10} onCellTap={()=>{}} myShips={myBoardState || placedShips} oppShots={oppShots} myShots={[]} />
+                                    <Grid size={boardSize} onCellTap={()=>{}} myShips={myBoardState || placedShips} oppShots={oppShots} myShots={[]} />
                                 </div>
                                 <div className="flex justify-center items-center gap-1 mt-2.5 px-1.5 py-1.5 bg-white/70 border border-orange-200 rounded-lg w-full shadow-sm">
                                     {myFleet.map((ship) => (
@@ -760,14 +805,14 @@ function Grid({
     return (
         <div className="flex flex-col w-full select-none">
             <div className="flex w-full pl-5 pr-0.5 mb-1.5 text-center font-mono text-[9px] sm:text-[10px] text-slate-500 font-bold tracking-wider">
-                {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].map((col) => (
+                {Array.from({ length: size }, (_, index) => String.fromCharCode(65 + index)).map((col) => (
                     <div key={col} className="flex-1">{col}</div>
                 ))}
             </div>
 
             <div className="flex w-full items-stretch">
                 <div className="flex flex-col justify-between py-1.5 pr-2.5 text-right font-mono text-[9px] sm:text-[10px] text-slate-500 font-bold w-3">
-                    {['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'].map((row) => (
+                    {Array.from({ length: size }, (_, index) => String(index + 1)).map((row) => (
                         <div key={row} className="h-0 flex items-center justify-end">{row}</div>
                     ))}
                 </div>
@@ -901,11 +946,52 @@ function Grid({
                                     display: 'flex', 
                                     alignItems: 'center', 
                                     justifyContent: 'center', 
-                                    overflow: 'hidden' 
+                                    overflow: 'visible'
                                 }}
                                 className={`select-none ${onDragStartShip && !isSunk ? 'cursor-grab active:cursor-grabbing hover:brightness-105' : ''}`}
                             >
                                 <img src={SHIP_IMAGES[ship.id]} alt="" style={{ width: ship.isVertical ? '100%' : `${100 / ship.size}%`, height: ship.isVertical ? '100%' : `${100 * ship.size}%`, objectFit: 'cover', filter: isSunk ? 'grayscale(100%) brightness(50%)' : 'none', transform: ship.isVertical ? 'none' : 'rotate(-90deg)', transformOrigin: 'center', flexShrink: 0 }} className="pointer-events-none" />
+
+                                {/* Hiệu ứng HIT trên tàu - Hiển thị chấm đỏ tại các ô bị trúng */}
+                                {ship.cells && ship.cells.map((cell: any) => {
+                                    const isHit = oppShots && oppShots.some((s: any) => s.x === cell.x && s.y === cell.y && s.hit);
+                                    if (!isHit) return null;
+
+                                    const cellIndexInShip = ship.cells.indexOf(cell);
+                                    const cellPercentage = ((cellIndexInShip + 0.5) / ship.size) * 100;
+
+                                    return (
+                                        <div
+                                            key={`hit-${ship.id}-${cell.x}-${cell.y}`}
+                                            style={{
+                                                position: 'absolute',
+                                                [ship.isVertical ? 'top' : 'left']: `${cellPercentage}%`,
+                                                [ship.isVertical ? 'left' : 'top']: '50%',
+                                                transform: 'translate(-50%, -50%)',
+                                                width: '18px',
+                                                height: '18px',
+                                                borderRadius: '50%',
+                                                background: 'radial-gradient(circle at 30% 30%, #ff6b6b, #dc2626)',
+                                                border: '2px solid #991b1b',
+                                                boxShadow: '0 0 12px rgba(220, 38, 38, 0.8), inset 0 0 6px rgba(0, 0, 0, 0.3)',
+                                                zIndex: 50,
+                                                pointerEvents: 'none',
+                                                animation: 'pulse 1.5s ease-in-out infinite'
+                                            }}
+                                        >
+                                            <div style={{
+                                                position: 'absolute',
+                                                width: '4px',
+                                                height: '4px',
+                                                background: '#fff',
+                                                borderRadius: '50%',
+                                                top: '3px',
+                                                left: '3px',
+                                                opacity: 0.6
+                                            }} />
+                                        </div>
+                                    );
+                                })}
                             </div>
                         );
                     })}
@@ -940,7 +1026,7 @@ function Grid({
 
                     {/* LỚP NỀN Ô LƯỚI BÓNG MỜ */}
                     {hoverState && hoverState.cells.map((c: any) => {
-                        if (c.x < 0 || c.x > 9 || c.y < 0 || c.y > 9) return null;
+                        if (c.x < 0 || c.x >= size || c.y < 0 || c.y >= size) return null;
                         return (
                             <div key={`hover-${c.x}-${c.y}`} 
                                  style={{ gridColumn: c.x + 1, gridRow: c.y + 1 }}

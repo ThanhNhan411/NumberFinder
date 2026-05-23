@@ -4,6 +4,13 @@ import { createServer as createViteServer } from "vite";
 import { createServer } from "http";
 import { Server } from "socket.io";
 
+type BattleshipMode = 'NORMAL' | 'HARD';
+
+const BATTLESHIP_BOARD_SIZES: Record<BattleshipMode, number> = {
+    NORMAL: 10,
+    HARD: 12,
+};
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -43,7 +50,8 @@ async function startServer() {
               p1Ready: false,
               p2Ready: false,
               p1Shots: [],
-              p2Shots: []
+              p2Shots: [],
+              battleshipMode: 'NORMAL'
           };
           socket.join(roomId);
           socket.emit("roomCreated", { roomId, playerId: 'P1', gameType: rooms[roomId].gameType });
@@ -131,6 +139,20 @@ async function startServer() {
           io.to(roomId).emit("gameState", room);
       });
 
+      socket.on("setBattleshipMode", ({ roomId, mode }) => {
+          const room = rooms[roomId];
+          if (!room || room.gameType !== 'BATTLESHIP' || room.status !== 'READY') return;
+          if (room.p1Ready || room.p2Ready) return;
+
+          const nextMode: BattleshipMode = mode === 'HARD' ? 'HARD' : 'NORMAL';
+          room.battleshipMode = nextMode;
+          room.p1Board = null;
+          room.p2Board = null;
+          room.p1Shots = [];
+          room.p2Shots = [];
+          io.to(roomId).emit("gameState", sanitizeBattleshipRoom(room));
+      });
+
       socket.on("startTurn", (roomId) => {
           const room = rooms[roomId];
           if (room && room.status === 'READY') {
@@ -182,6 +204,8 @@ async function startServer() {
           const room = rooms[roomId];
           if (!room || room.gameType !== 'BATTLESHIP' || room.status !== 'PLAYING') return;
           if (room.turn !== playerId) return;
+          const boardSize = BATTLESHIP_BOARD_SIZES[room.battleshipMode as BattleshipMode] || BATTLESHIP_BOARD_SIZES.NORMAL;
+          if (x < 0 || x >= boardSize || y < 0 || y >= boardSize) return;
 
           const isP1 = playerId === 'P1';
           const oppBoard = isP1 ? room.p2Board : room.p1Board;

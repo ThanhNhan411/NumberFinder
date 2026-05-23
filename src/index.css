@@ -245,3 +245,15 @@ body {
   opacity: 0.7;
   animation: wave-float 7s ease-in-out infinite;
 }
+
+/* Hit indicator pulse animation for ships */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 12px rgba(220, 38, 38, 0.8), inset 0 0 6px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 20px rgba(220, 38, 38, 1), inset 0 0 6px rgba(0, 0, 0, 0.3);
+  }
+}
