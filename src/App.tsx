@@ -308,6 +308,8 @@ export default function App() {
       );
   }
 
+  const isChaosMode = status === 'PLAYING' && (100 - p1Ticks.size < 50) && (100 - p2Ticks.size < 50);
+
   return (
     <div className="flex flex-col h-[100dvh] w-screen overflow-hidden bg-orange-50 text-slate-900 font-sans touch-none overscroll-none relative select-none">
 
@@ -405,6 +407,7 @@ export default function App() {
                 turn={turn}
                 targetNumber={targetNumber}
                 myPlayerId={myPlayerId}
+                isChaosMode={isChaosMode}
              />
          </div>
       </div>

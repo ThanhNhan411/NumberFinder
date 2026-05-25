@@ -1,7 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-export default function NumberBoard({ status, numbers, foundNumbers, onNumberClick, turn, targetNumber, myPlayerId }: any) {
+export default function NumberBoard({ status, numbers, foundNumbers, onNumberClick, turn, targetNumber, myPlayerId, isChaosMode }: any) {
     const [wrongIds, setWrongIds] = useState<Set<number>>(new Set());
+    const [chaosOffsets, setChaosOffsets] = useState<Record<number, { tx: number, ty: number, rot: number }>>({});
+
+    useEffect(() => {
+        if (!isChaosMode || status !== 'PLAYING') {
+            setChaosOffsets({});
+            return;
+        }
+
+        // Initialize immediate random offsets
+        const generateOffsets = () => {
+            const next: Record<number, { tx: number, ty: number, rot: number }> = {};
+            numbers.forEach((item: any) => {
+                if (item) {
+                    // Small bounds (max 10px drift) to prevent overlapping with neighboring cells
+                    next[item.value] = {
+                        tx: (Math.random() - 0.5) * 20, // range -10px to 10px
+                        ty: (Math.random() - 0.5) * 20, // range -10px to 10px
+                        rot: (Math.random() - 0.5) * 60 // range -30deg to 30deg
+                    };
+                }
+            });
+            return next;
+        };
+
+        setChaosOffsets(generateOffsets());
+
+        // Slow movement: update every 2.5 seconds
+        const interval = setInterval(() => {
+            setChaosOffsets(generateOffsets());
+        }, 2500);
+
+        return () => {
+            clearInterval(interval);
+        };
+    }, [isChaosMode, status, numbers]);
 
     const handleNumberDown = (val: number) => {
         if (status === 'PLAYING' && val !== targetNumber && myPlayerId === turn) {
@@ -18,7 +53,7 @@ export default function NumberBoard({ status, numbers, foundNumbers, onNumberCli
     };
 
     return (
-        <div className="relative w-full h-full bg-slate-50 overflow-hidden flex flex-col justify-center">
+        <div className={`relative w-full h-full overflow-hidden flex flex-col justify-center transition-colors duration-1000 ${isChaosMode ? 'bg-orange-50/80' : 'bg-slate-50'}`}>
             {/* The Overlay for Game Statuses */}
             {(status === 'READY') && (
                 <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80 backdrop-blur-sm">
@@ -39,7 +74,11 @@ export default function NumberBoard({ status, numbers, foundNumbers, onNumberCli
                     }
                     const isFound = foundNumbers.has(item.value);
                     const isWrong = wrongIds.has(item.value);
-                    const finalRotation = item.rotation;
+                    
+                    const offset = chaosOffsets[item.value] || { tx: 0, ty: 0, rot: 0 };
+                    const finalTx = item.tx + (isFound ? 0 : offset.tx);
+                    const finalTy = item.ty + (isFound ? 0 : offset.ty);
+                    const finalRotation = item.rotation + (isFound ? 0 : offset.rot);
 
                     return (
                         <div key={item.id} className="relative flex items-center justify-center overflow-visible">
@@ -52,18 +91,20 @@ export default function NumberBoard({ status, numbers, foundNumbers, onNumberCli
                                 className={`
                                     relative flex items-center justify-center w-full h-full rounded-lg overflow-visible
                                     font-bold cursor-pointer select-none font-sans
-                                    transition-all duration-300 ease-out
                                     ${isFound ? 'opacity-10 scale-[0.4] grayscale blur-[2px] pointer-events-none' : 'opacity-100 hover:scale-110 active:scale-[0.9] hover:z-50 active:z-50'}
                                     ${isWrong ? 'z-50' : ''}
                                 `}
                                 style={{
                                     color: isWrong ? '#f43f5e' : item.color,
-                                    transform: isFound ? undefined : `translate(${item.tx}px, ${item.ty}px) rotate(${finalRotation}deg) scale(${isWrong ? item.scale * 1.2 : item.scale})`,
+                                    transform: isFound ? undefined : `translate(${finalTx}px, ${finalTy}px) rotate(${finalRotation}deg) scale(${isWrong ? item.scale * 1.2 : item.scale})`,
                                     fontSize: 'clamp(12px, 2.8vmin, 24px)',
-                                    zIndex: isWrong ? 100 : (isFound ? 0 : Math.floor(item.scale * 10))
+                                    zIndex: isWrong ? 100 : (isFound ? 0 : Math.floor(item.scale * 10)),
+                                    transition: isChaosMode && !isFound && !isWrong 
+                                        ? 'transform 2500ms linear, color 150ms' 
+                                        : 'all 300ms ease-out'
                                 }}
                              >
-                               <span className={`rounded-lg px-1.5 py-0.5 sm:px-2 sm:py-1 backdrop-blur-sm pointer-events-none shadow-sm transition-colors duration-150 ${isWrong ? 'bg-pink-500/20 border-2 border-pink-500 animate-shake' : 'bg-white border border-slate-200'}`}>
+                               <span className={`rounded-lg px-1.5 py-0.5 sm:px-2 sm:py-1 backdrop-blur-sm pointer-events-none shadow-sm transition-colors duration-150 ${isWrong ? 'bg-pink-500/20 border-2 border-pink-500 animate-shake' : 'bg-white border border-slate-200'} ${isChaosMode && !isFound ? 'border-orange-350 shadow-orange-100/50' : ''}`}>
                                    {item.value}
                                </span>
                              </div>
@@ -72,5 +113,5 @@ export default function NumberBoard({ status, numbers, foundNumbers, onNumberCli
                 })}
             </div>
         </div>
-    )
+    );
 }
