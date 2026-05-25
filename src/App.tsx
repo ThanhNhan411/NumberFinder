@@ -157,6 +157,7 @@ export default function App() {
       if (!myPlayerId) return;
       if (myPlayerId !== playerId) return; // Only local player's attack panel should send tick events
       if (turn === playerId) return; // Cannot tick while that player is currently searching
+      if (!socket) return;
       socket.emit('tick', { roomId, playerId, cellId });
   };
 
@@ -379,8 +380,8 @@ export default function App() {
           </div>
       )}
 
-      {/* Top Area (Opponent) */}
-      <div className="flex-[0.8] sm:flex-1 w-full bg-white p-2 sm:p-4 rotate-180 relative border-b border-orange-200 shadow-sm flex flex-col justify-center min-h-0">
+      {/* Top Area (Opponent) - compact on mobile */}
+      <div className="flex-[0.45] sm:flex-1 w-full bg-white p-1 sm:p-4 rotate-180 relative border-b border-orange-200 shadow-sm flex flex-col justify-center min-h-0">
          <PlayerPanel
             playerId={myPlayerId === 'P1' ? 'P2' : 'P1'}
             name={myPlayerId === 'P1' ? "P2 - OPPONENT" : "P1 - OPPONENT"}
@@ -389,11 +390,12 @@ export default function App() {
             targetNumber={targetNumber}
             ticks={myPlayerId === 'P1' ? p2Ticks : p1Ticks}
             onStart={() => handleStart(myPlayerId === 'P1' ? 'P2' : 'P1')}
+            isCompact={true}
          />
       </div>
 
       {/* Middle Board */}
-      <div className="flex-[2] flex items-center justify-center w-full max-w-lg lg:max-w-4xl mx-auto p-3 sm:p-4 z-10 min-h-0">
+      <div className="flex-[1.8] sm:flex-[2] flex items-center justify-center w-full max-w-lg lg:max-w-4xl mx-auto p-2 sm:p-4 z-10 min-h-0">
          <div className="w-full h-full rounded-3xl border border-orange-200 relative overflow-hidden bg-white shadow-[0_10px_40px_rgba(0,0,0,0.08)]">
              <NumberBoard
                 status={status}
@@ -407,8 +409,8 @@ export default function App() {
          </div>
       </div>
 
-      {/* Bottom Area (Me) */}
-      <div className="flex-[0.8] sm:flex-1 w-full bg-white p-2 sm:p-4 relative border-t border-orange-200 shadow-sm flex flex-col justify-center min-h-0">
+      {/* Bottom Area (Me) - more space + safe padding for mobile */}
+      <div className="flex-[1.1] sm:flex-1 w-full bg-white px-3 pb-3 pt-2 sm:p-4 relative border-t border-orange-200 shadow-sm flex flex-col justify-center min-h-0" style={{ paddingBottom: 'calc(30px + max(0.75rem, env(safe-area-inset-bottom)))' }}>
          <PlayerPanel
             playerId={myPlayerId || 'P1'}
             name={myPlayerId === 'P1' ? "P1 - YOU" : "P2 - YOU"}
@@ -434,4 +436,3 @@ export default function App() {
     </div>
   );
 }
-
